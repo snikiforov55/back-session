@@ -1,8 +1,8 @@
 package main
 
 import (
-	"./session"
 	"github.com/gorilla/mux"
+	"github.com/snikiforov55/back-session/session"
 	"log"
 	"net/http"
 )
