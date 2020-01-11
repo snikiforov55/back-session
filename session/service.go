@@ -6,11 +6,14 @@ import (
 	"net/http"
 )
 
-type (
-	DBInterface interface {
-		//Close() error
-	}
-)
+type UserInfo struct {
+	UserId             string `json:"user_id"`
+	DeviceId           string `json:"device_id"`
+	AuthenticationCode string `json:"auth_code"`
+	AccessToken        string `json:"access_token"`
+	RefreshToken       string `json:"refresh_token"`
+	UserEmail          string `json:"user_email"`
+}
 
 type Service struct {
 	db     redis.Cmdable

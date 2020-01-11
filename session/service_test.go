@@ -3,6 +3,8 @@ package session
 import (
 	"bytes"
 	"encoding/json"
+	"github.com/alicebob/miniredis"
+	"github.com/go-redis/redis/v7"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -12,7 +14,7 @@ var (
 	session = 0
 )
 
-func testRandomString(n int) (string, error) {
+func testRandomString(_ int) (string, error) {
 	return "SESSION_01", nil
 }
 
@@ -25,15 +27,32 @@ func TestRandomString(t *testing.T) {
 		t.Errorf("Unexpected random string length. Waiting for >= 47 got %d", len(str))
 	}
 }
-func TestCreateSession(t *testing.T) {
-	srv := NewServer(nil)
+
+func setupServer() (*miniredis.Miniredis, *Service, error) {
+	mr, err := miniredis.Run()
+	if err != nil {
+		return nil, nil, err
+	}
+	client := redis.NewClient(&redis.Options{
+		Addr: mr.Addr(),
+	})
+	srv := NewServer(client)
 	srv.randomString = testRandomString
-	user := struct {
-		UserId   string `json:"user_id"`
-		DeviceId string `json:"device_id"`
-	}{
-		UserId:   "userOne",
-		DeviceId: "Netscape on Nokia phone",
+
+	return mr, srv, nil
+}
+func TestCreateSession(t *testing.T) {
+	mr, srv, errSrv := setupServer()
+	if errSrv != nil {
+		t.Error(errSrv)
+	}
+	user := UserInfo{
+		"userOne",
+		"Netscape on Nokia phone",
+		"",
+		"",
+		"",
+		"",
 	}
 	var buf bytes.Buffer
 	err := json.NewEncoder(&buf).Encode(user)
@@ -61,6 +80,15 @@ func TestCreateSession(t *testing.T) {
 		t.Errorf("CreateSession. Unexpected sesson id. "+
 			"Waiting for \"SESSION_01\" got \"%s\"", session.SessionId)
 	}
+	var userInfo UserInfo
+	err = srv.readSession(session.SessionId, &userInfo)
+	if err != nil {
+		t.Errorf("Failed to read back from database. Error: " + err.Error())
+	}
+	if userInfo.UserId != user.UserId || userInfo.DeviceId != user.DeviceId {
+		t.Errorf("Corrupted data in the database.")
+	}
+	mr.Close()
 }
 
 func TestCreateSessionNoUser(t *testing.T) {
