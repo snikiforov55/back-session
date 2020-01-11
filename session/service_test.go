@@ -8,12 +8,32 @@ import (
 	"testing"
 )
 
+var (
+	session = 0
+)
+
+func testRandomString(n int) (string, error) {
+	return "SESSION_01", nil
+}
+
+func TestRandomString(t *testing.T) {
+	str, err := randomString(37)
+	if err != nil {
+		t.Error(err)
+	}
+	if len(str) < 37 {
+		t.Errorf("Unexpected random string length. Waiting for >= 47 got %d", len(str))
+	}
+}
 func TestCreateSession(t *testing.T) {
 	srv := NewServer(nil)
+	srv.randomString = testRandomString
 	user := struct {
-		UserId string `json:"user_id"`
+		UserId   string `json:"user_id"`
+		DeviceId string `json:"device_id"`
 	}{
-		UserId: "userOne",
+		UserId:   "userOne",
+		DeviceId: "Netscape on Nokia phone",
 	}
 	var buf bytes.Buffer
 	err := json.NewEncoder(&buf).Encode(user)

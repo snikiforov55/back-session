@@ -1,6 +1,6 @@
 package session
 
-func (s *Server) routes() {
+func (s *Service) routes() {
 	s.Router.Methods("POST").Name("CreateSession").
 		Path("/session").HandlerFunc(s.handleCreateSession())
 	s.Router.Methods("PUT").Name("UpdateAuthInfo").

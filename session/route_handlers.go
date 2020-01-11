@@ -12,16 +12,20 @@ func reportError(w http.ResponseWriter, code int, err string) {
 	log.Printf("%s", err)
 }
 
-func (s *Server) handleCreateSession() http.HandlerFunc {
+func (s *Service) handleCreateSession() http.HandlerFunc {
 	type inUserInfo struct {
-		UserId   string `json:"user_id"`
-		DeviceId string `json:"device_id,omitempty"`
+		UserId             string `json:"user_id"`
+		DeviceId           string `json:"device_id,omitempty"`
+		AuthenticationCode string `json:"auth_code"`
+		AccessToken        string `json:"access_token"`
+		RefreshToken       string `json:"refresh_token"`
+		UserEmail          string `json:"user_email"`
 	}
 	type outSession struct {
 		SessionId string `json:"session_id"`
 	}
 	return func(w http.ResponseWriter, r *http.Request) {
-		user := inUserInfo{"", ""}
+		var user inUserInfo //{"", ""}
 		// Check if user id is provided
 		err := json.NewDecoder(r.Body).Decode(&user)
 		if err != nil || len(user.UserId) == 0 {
@@ -30,8 +34,9 @@ func (s *Server) handleCreateSession() http.HandlerFunc {
 		}
 		// Create a new session for a provided user id
 		var buf bytes.Buffer
+		str, err := s.randomString(47)
 		s := outSession{
-			"SESSION_01",
+			str,
 		}
 		err = json.NewEncoder(&buf).Encode(s)
 		if err != nil {
@@ -50,19 +55,19 @@ func (s *Server) handleCreateSession() http.HandlerFunc {
 	}
 }
 
-func (s *Server) handleUpdateAuthInfo() http.HandlerFunc {
+func (s *Service) handleUpdateAuthInfo() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 	}
 }
 
-func (s *Server) handleGetSessionAttributes() http.HandlerFunc {
+func (s *Service) handleGetSessionAttributes() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("{\"result\":\"OK\"}"))
 	}
 }
 
-func (s *Server) handleDropSession() http.HandlerFunc {
+func (s *Service) handleDropSession() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 	}
