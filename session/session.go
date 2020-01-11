@@ -5,19 +5,21 @@ import (
 	"github.com/gorilla/mux"
 )
 
+type (
+	DBInterface interface {
+		//Close() error
+	}
+)
+
 type Server struct {
-	db     *redis.Client
+	db     redis.Cmdable
 	Router *mux.Router
 	//email  EmailSender
 }
 
-func NewServer() *Server {
+func NewServer(client redis.Cmdable) *Server {
 	s := Server{
-		redis.NewClient(&redis.Options{
-			Addr:     "localhost:6379",
-			Password: "", // no password set
-			DB:       0,  // use default DB
-		}),
+		client,
 		mux.NewRouter().StrictSlash(true),
 	}
 	s.routes()

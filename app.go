@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/go-redis/redis/v7"
 	"github.com/gorilla/mux"
 	"github.com/snikiforov55/back-session/session"
 	"log"
@@ -18,6 +19,12 @@ func StartWebServer(port string, router *mux.Router) {
 }
 
 func main() {
-	server := session.NewServer()
+	client := redis.NewClient(&redis.Options{
+		Addr:     "localhost:6379",
+		Password: "", // no password set
+		DB:       0,  // use default DB
+	})
+	server := session.NewServer(client)
+
 	StartWebServer("8090", server.Router)
 }
