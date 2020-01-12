@@ -4,7 +4,6 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
-	"reflect"
 	"time"
 )
 
@@ -52,11 +51,11 @@ func (s *Service) createSession(userInfo interface{}, expiration time.Duration) 
 	return rndStr, nil
 }
 
-func (s *Service) readSession(sessionId string, dest *UserInfo) error {
-	m := objectToMap(*dest)
+func (s *Service) readSession(sessionId string, dest interface{}) error {
+	m := objectToMap(dest)
 
-	keys := make([]string, reflect.ValueOf(*dest).NumField())
-	values := make([]string, reflect.ValueOf(*dest).NumField())
+	keys := make([]string, len(m))
+	values := make([]string, len(m))
 	var i = 0
 	for k, _ := range m {
 		keys[i] = k
