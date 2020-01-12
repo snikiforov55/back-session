@@ -30,6 +30,10 @@ func objectFromMap(m map[string]interface{}, userInfo interface{}) error {
 	return nil
 }
 
+func makeSessionKey(id string) string {
+	return "session:" + id
+}
+
 // Creates a session for the provided user id.
 // If user id is not provided the function fails and no records in the database are created.
 // Returns a session id string on success.
@@ -40,7 +44,7 @@ func (s *Service) createSession(sessionAttribs interface{}, expirationSec int) (
 	if errRnd != nil {
 		return "", errRnd
 	}
-	sessionId := "session:" + rndStr
+	sessionId := makeSessionKey(rndStr)
 	//TODO replace iteration through a map after a miniredis fix will be available
 	for k, v := range uInfoMap {
 		err := s.db.HSet(sessionId, k, v).Err()
@@ -71,7 +75,7 @@ func (s *Service) readSession(sessionId string, dest interface{}) error {
 	//TODO convert to HMGET
 	for k, _ := range m {
 		keys[i] = k
-		value, err := s.db.HGet("session:"+sessionId, k).Result()
+		value, err := s.db.HGet(makeSessionKey(sessionId), k).Result()
 		if err != nil || value == "" {
 			values[i] = nil
 		} else {
@@ -92,4 +96,16 @@ func (s *Service) readSession(sessionId string, dest interface{}) error {
 		return errors.New("requested attributes not found")
 	}
 	return objectFromMap(m, dest)
+}
+
+// Deletes session key and related session attributes.
+func (s *Service) deleteSession(sessionId string) error {
+	num, err := s.db.Del(makeSessionKey(sessionId)).Result()
+	if err != nil {
+		return err
+	}
+	if num == 0 {
+		return errors.New("session id not found")
+	}
+	return nil
 }

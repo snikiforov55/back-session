@@ -85,6 +85,13 @@ func (s *Service) handleGetSessionAttributes() http.HandlerFunc {
 
 func (s *Service) handleDropSession() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-
+		vars := mux.Vars(r)
+		sessionId := vars["id"]
+		err := s.deleteSession(sessionId)
+		if err != nil {
+			w.WriteHeader(http.StatusNotFound)
+		} else {
+			w.WriteHeader(http.StatusOK)
+		}
 	}
 }

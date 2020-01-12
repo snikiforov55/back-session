@@ -262,6 +262,70 @@ func TestSessionIncompleteUserInfo(t *testing.T) {
 	}
 	mr.Close()
 }
-func TestDropSession(t *testing.T) {
+func TestDropSessionDatabaseOnly(t *testing.T) {
+	mr, srv, errSrv := setupServer()
+	if errSrv != nil {
+		t.Error(errSrv)
+	}
+	user := struct {
+		UserId string `json:"user_id"`
+	}{
+		"userOne",
+	}
+	id, errId := srv.createSession(user, 10)
+	if errId != nil {
+		t.Errorf("%s", errId.Error())
+	}
+	err := srv.readSession(id, &user)
+	if err != nil {
+		t.Error(err)
+	}
+	err = srv.deleteSession("id")
+	if err == nil {
+		t.Errorf("Expected an error whe deleteing non existing key but got no error")
+	}
+	err = srv.deleteSession(id)
+	if err != nil {
+		t.Error(err)
+	}
+	err = srv.readSession(id, &user)
+	if err == nil {
+		t.Errorf("Expected to fail retrieving session attributes but session was retrieved.")
+	}
+	mr.Close()
+}
 
+func TestDropSession(t *testing.T) {
+	mr, srv, errSrv := setupServer()
+	if errSrv != nil {
+		t.Error(errSrv)
+	}
+	user := struct {
+		UserId string `json:"user_id"`
+	}{
+		"userOne",
+	}
+	id, errId := srv.createSession(user, 10)
+	if errId != nil {
+		t.Errorf("%s", errId.Error())
+	}
+	req, err := http.NewRequest("DELETE", "/session/"+"id", nil)
+	if err != nil {
+		t.Error(err)
+	}
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+	if w.Code == http.StatusOK {
+		t.Errorf("Expected an error when deleteing non existing key but got StatusOK")
+	}
+	req, err = http.NewRequest("DELETE", "/session/"+id, nil)
+	if err != nil {
+		t.Error(err)
+	}
+	w = httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Errorf("Expected no error when deleteing existing key but got %d", w.Code)
+	}
+	mr.Close()
 }
