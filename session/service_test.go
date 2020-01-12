@@ -46,7 +46,7 @@ func TestCreateSession(t *testing.T) {
 	if errSrv != nil {
 		t.Error(errSrv)
 	}
-	user := UserInfo{
+	user := SessionAttributes{
 		"userOne",
 		"Netscape on Nokia phone",
 		"",
@@ -80,7 +80,7 @@ func TestCreateSession(t *testing.T) {
 		t.Errorf("CreateSession. Unexpected sesson id. "+
 			"Waiting for \"SESSION_01\" got \"%s\"", session.SessionId)
 	}
-	var userInfo UserInfo
+	var userInfo SessionAttributes
 	err = srv.readSession(session.SessionId, &userInfo)
 	if err != nil {
 		t.Errorf("Failed to read back from database. Error: " + err.Error())
@@ -128,9 +128,140 @@ func TestUpdateAuthInfo(t *testing.T) {
 }
 
 func TestGetSessionAttributes(t *testing.T) {
-
+	mr, srv, errSrv := setupServer()
+	if errSrv != nil {
+		t.Error(errSrv)
+	}
+	user := SessionAttributes{
+		"userOne",
+		"Netscape on Nokia phone",
+		"",
+		"",
+		"",
+		"",
+	}
+	id, errId := srv.createSession(user, 10)
+	if errId != nil {
+		t.Errorf("%s", errId.Error())
+	}
+	req, err := http.NewRequest("GET", "/session/"+id, nil)
+	if err != nil {
+		t.Error(err)
+	}
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Errorf("GetSession. Invalid HTTP response. Wait %d got %d ", http.StatusOK, w.Code)
+	}
+	var userInfo SessionAttributes
+	err = json.NewDecoder(w.Body).Decode(&userInfo)
+	if err != nil {
+		t.Errorf("GetSession. Failed to decode GET /session/{id} http response. Error: %s", err.Error())
+	}
+	if userInfo.UserId != user.UserId || userInfo.DeviceId != user.DeviceId {
+		t.Errorf("Corrupted data in the database.")
+	}
+	mr.Close()
 }
-
+func TestReadSessionFailures(t *testing.T) {
+	mr, srv, errSrv := setupServer()
+	if errSrv != nil {
+		t.Error(errSrv)
+	}
+	user := SessionAttributes{
+		"userOne",
+		"Netscape on Nokia phone",
+		"",
+		"",
+		"",
+		"",
+	}
+	id, errId := srv.createSession(user, 3600)
+	if errId != nil {
+		t.Errorf("%s", errId.Error())
+	}
+	err := srv.readSession("id", &user)
+	if err == nil {
+		t.Errorf("Expecting readSession to fail due to invalid session id but it didn't.")
+	}
+	dummy := struct {
+		Whatever string `json:"whatever"`
+	}{""}
+	err = srv.readSession(id, &dummy)
+	if err == nil {
+		t.Errorf("Expecting readSession to fail due to invalid structure but it didn't.")
+	}
+	dummyOneValid := struct {
+		Whatever string `json:"whatever"`
+		UserId   string `json:"user_id"`
+	}{"", ""}
+	err = srv.readSession(id, &dummyOneValid)
+	if err != nil {
+		t.Errorf("Expecting readSession not to fail but it did.")
+	}
+	mr.Close()
+}
+func TestGetSessionAttributesFailures(t *testing.T) {
+	mr, srv, errSrv := setupServer()
+	if errSrv != nil {
+		t.Error(errSrv)
+	}
+	user := SessionAttributes{
+		"userOne",
+		"Netscape on Nokia phone",
+		"",
+		"",
+		"",
+		"",
+	}
+	_, errId := srv.createSession(user, 10)
+	if errId != nil {
+		t.Errorf("%s", errId.Error())
+	}
+	req, err := http.NewRequest("GET", "/session/"+"id", nil)
+	if err != nil {
+		t.Error(err)
+	}
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+	if w.Code != http.StatusNotFound {
+		t.Errorf("GetSession. Invalid HTTP response. Wait %d got %d ", http.StatusNotFound, w.Code)
+	}
+	mr.Close()
+}
+func TestSessionIncompleteUserInfo(t *testing.T) {
+	mr, srv, errSrv := setupServer()
+	if errSrv != nil {
+		t.Error(errSrv)
+	}
+	user := struct {
+		UserId string `json:"user_id"`
+	}{
+		"userOne",
+	}
+	id, errId := srv.createSession(user, 10)
+	if errId != nil {
+		t.Errorf("%s", errId.Error())
+	}
+	req, err := http.NewRequest("GET", "/session/"+id, nil)
+	if err != nil {
+		t.Error(err)
+	}
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Errorf("GetSession. Invalid HTTP response. Wait %d got %d ", http.StatusOK, w.Code)
+	}
+	var userInfo SessionAttributes
+	err = json.NewDecoder(w.Body).Decode(&userInfo)
+	if err != nil {
+		t.Errorf("GetSession. Failed to decode GET /session/{id} http response. Error: %s", err.Error())
+	}
+	if userInfo.UserId != user.UserId {
+		t.Errorf("Failed to read incomplete session attributes from the database.")
+	}
+	mr.Close()
+}
 func TestDropSession(t *testing.T) {
 
 }

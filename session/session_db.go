@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"time"
 )
 
@@ -29,8 +30,11 @@ func objectFromMap(m map[string]interface{}, userInfo interface{}) error {
 	return nil
 }
 
-func (s *Service) createSession(userInfo interface{}, expiration time.Duration) (string, error) {
-	uInfoMap := objectToMap(userInfo)
+// Creates a session for the provided user id.
+// If user id is not provided the function fails and no records in the database are created.
+// Returns a session id string on success.
+func (s *Service) createSession(sessionAttribs interface{}, expirationSec int) (string, error) {
+	uInfoMap := objectToMap(sessionAttribs)
 
 	rndStr, errRnd := s.randomString(47)
 	if errRnd != nil {
@@ -44,30 +48,48 @@ func (s *Service) createSession(userInfo interface{}, expiration time.Duration) 
 			return "", err
 		}
 	}
-	err := s.db.Expire(sessionId, expiration).Err()
-	if err != nil {
-		return "", nil
+	if expirationSec >= 0 {
+		err := s.db.Expire(sessionId, time.Duration(expirationSec)*time.Second).Err()
+		if err != nil {
+			return "", nil
+		}
 	}
 	return rndStr, nil
 }
 
+// Returns session attributes for the provided sessionId
+// If sessionId does not exist returns error
+// If none of the requested attributes found returns error
+// If sessionId exists and at least one of the attributes exists returns error == nil
+//	and fills the output object dest.
+//	The attributes which do not exist are replaced by the empty string.
 func (s *Service) readSession(sessionId string, dest interface{}) error {
 	m := objectToMap(dest)
-
 	keys := make([]string, len(m))
-	values := make([]string, len(m))
+	values := make([]interface{}, len(m))
 	var i = 0
+	//TODO convert to HMGET
 	for k, _ := range m {
 		keys[i] = k
 		value, err := s.db.HGet("session:"+sessionId, k).Result()
-		if err != nil {
-			return err
+		if err != nil || value == "" {
+			values[i] = nil
+		} else {
+			values[i] = value
 		}
-		values[i] = value
 		i++
 	}
+	isNil := true
 	for i := 0; i < len(keys); i++ {
-		m[keys[i]] = values[i]
+		if values[i] != nil {
+			isNil = false
+			m[keys[i]] = values[i]
+		} else {
+			m[keys[i]] = ""
+		}
+	}
+	if isNil {
+		return errors.New("requested attributes not found")
 	}
 	return objectFromMap(m, dest)
 }
