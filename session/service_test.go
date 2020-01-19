@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"github.com/alicebob/miniredis"
-	"github.com/go-redis/redis/v7"
+	"github.com/go-redis/redis"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -326,6 +326,43 @@ func TestDropSession(t *testing.T) {
 	srv.ServeHTTP(w, req)
 	if w.Code != http.StatusOK {
 		t.Errorf("Expected no error when deleteing existing key but got %d", w.Code)
+	}
+	mr.Close()
+}
+
+func TestUpdateSessionDB(t *testing.T) {
+	mr, srv, errSrv := setupServer()
+	if errSrv != nil {
+		t.Error(errSrv)
+	}
+	sessionInit := struct {
+		UserId string `json:"user_id"`
+	}{
+		"userOne",
+	}
+	id, errId := srv.createSession(sessionInit, 10)
+	if errId != nil {
+		t.Errorf("%s", errId.Error())
+	}
+	sessionUpd := struct {
+		UserId      string `json:"user_id"`
+		AccessToken string `json:"access_token"`
+	}{
+		"userOne",
+		"ABC",
+	}
+	sessionRes := sessionUpd
+	sessionRes.AccessToken = ""
+	sessionRes.UserId = ""
+	err := srv.updateSession(id, sessionUpd, &sessionRes)
+	if err != nil {
+		t.Errorf("Update session failed %s", err.Error())
+	}
+	if sessionRes.UserId != sessionUpd.UserId || sessionRes.AccessToken != sessionUpd.AccessToken {
+		t.Errorf("Returned session does not match the update %s != %s", sessionUpd, sessionRes)
+	}
+	if err := srv.updateSession("sessionId", sessionUpd, &sessionRes); err == nil {
+		t.Error("Expecting a call fail due to invalid session ID but it didn't")
 	}
 	mr.Close()
 }

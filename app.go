@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/go-redis/redis/v7"
+	"github.com/go-redis/redis"
 	"github.com/gorilla/mux"
 	"github.com/snikiforov55/back-session/session"
 	"log"

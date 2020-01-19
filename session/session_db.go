@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 )
 
@@ -106,6 +107,32 @@ func (s *Service) deleteSession(sessionId string) error {
 	}
 	if num == 0 {
 		return errors.New("session id not found")
+	}
+	return nil
+}
+
+func (s *Service) updateSession(sessionId string, src interface{}, dest interface{}) error {
+	sessionKey := makeSessionKey(sessionId)
+	res, err := s.db.Exists(sessionKey).Result()
+	if err != nil {
+		return err
+	}
+	if res == 0 {
+		return errors.New(fmt.Sprintf("Session \"%s\"Not found", sessionId))
+	}
+	m := objectToMap(src)
+	pipe := s.db.TxPipeline()
+	for k, v := range m {
+		if err := pipe.HSet(sessionKey, k, v).Err(); err != nil {
+			pipe.Discard()
+			return err
+		}
+	}
+	if _, err := pipe.Exec(); err != nil {
+		return err
+	}
+	if err := s.readSession(sessionId, dest); err != nil {
+		return err
 	}
 	return nil
 }

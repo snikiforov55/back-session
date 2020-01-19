@@ -54,9 +54,10 @@ func (s *Service) handleCreateSession() http.HandlerFunc {
 	}
 }
 
-func (s *Service) handleUpdateAuthInfo() http.HandlerFunc {
+func (s *Service) handleUpdateSessionAttributes() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-
+		//vars := mux.Vars(r)
+		//sessionId := vars["id"]
 	}
 }
 

@@ -1,7 +1,7 @@
 package session
 
 import (
-	"github.com/go-redis/redis/v7"
+	"github.com/go-redis/redis"
 	"github.com/gorilla/mux"
 	"net/http"
 )
