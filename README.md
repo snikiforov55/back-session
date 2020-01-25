@@ -44,3 +44,25 @@ The session database is redis.
 | PATCH  /session/{id}   | session_attributes   | session_attributes  | Update auth info for the session. If new tokens are provided.
 | DELETE /session/{id}   |                      | session_id           | Delete session
 | DELETE /session        | user_id              |             | Delete all sessions for a user
+
+
+# Build instructions
+
+## Build executable command
+```
+CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o sessionsrv.elf .
+```
+
+## Docker
+
+### Build
+
+```
+docker build -t go-session-srv -f Dockerfile . 
+```
+
+### Run
+
+```
+docker run -it --publish 8090:8090   go-session-srv
+```
