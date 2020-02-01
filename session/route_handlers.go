@@ -26,7 +26,7 @@ func (s *Service) handleCreateSession() http.HandlerFunc {
 			return
 		}
 		// Create a new session for a provided userSessionAttr id
-		str, err := s.createSession(userSessionAttr, s.sessionExpirationSec)
+		str, err := s.createSession(userSessionAttr.UserId, userSessionAttr, s.sessionExpirationSec)
 		if err != nil {
 			reportError(w, http.StatusInternalServerError,
 				"Failed to create session in the database. Error: "+err.Error())
@@ -43,7 +43,11 @@ func (s *Service) handleCreateSession() http.HandlerFunc {
 			header := w.Header()
 			header.Set("Content-Type", "application/json")
 			header.Set("Cache-Control", "no-cache, no-store")
-			w.Write(js)
+			if _, err := w.Write(js); err != nil {
+				reportError(w, http.StatusInternalServerError,
+					"Failed write a payload to the response. Error: "+err.Error())
+				return
+			}
 		}
 	}
 }
@@ -74,7 +78,11 @@ func (s *Service) handleGetSessionAttributes() http.HandlerFunc {
 			header := w.Header()
 			header.Set("Content-Type", "application/json")
 			header.Set("Cache-Control", "no-cache, no-store")
-			w.Write(js)
+			if _, err := w.Write(js); err != nil {
+				reportError(w, http.StatusInternalServerError,
+					"Failed write a payload to the response. Error: "+err.Error())
+				return
+			}
 		}
 	}
 }

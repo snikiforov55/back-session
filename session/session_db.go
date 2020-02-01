@@ -21,7 +21,9 @@ func randomString(n int) (string, error) {
 func objectToMap(userInfo interface{}) map[string]interface{} {
 	var uInfoMap map[string]interface{}
 	inrec, _ := json.Marshal(userInfo)
-	json.Unmarshal(inrec, &uInfoMap)
+	if err := json.Unmarshal(inrec, &uInfoMap); err != nil {
+		return uInfoMap
+	}
 	return uInfoMap
 }
 func objectFromMap(m map[string]interface{}, userInfo interface{}) error {
@@ -34,11 +36,14 @@ func objectFromMap(m map[string]interface{}, userInfo interface{}) error {
 func makeSessionKey(id string) string {
 	return "session:" + id
 }
+func makeUserKey(id string) string {
+	return "user:" + id
+}
 
 // Creates a session for the provided user id.
 // If user id is not provided the function fails and no records in the database are created.
 // Returns a session id string on success.
-func (s *Service) createSession(sessionAttribs interface{}, expirationSec int) (string, error) {
+func (s *Service) createSession(userId string, sessionAttribs interface{}, expirationSec int) (string, error) {
 	uInfoMap := objectToMap(sessionAttribs)
 
 	rndStr, errRnd := s.randomString(47)
@@ -58,6 +63,9 @@ func (s *Service) createSession(sessionAttribs interface{}, expirationSec int) (
 		if err != nil {
 			return "", nil
 		}
+	}
+	if err := s.db.RPush(makeUserKey(userId), rndStr).Err(); err != nil {
+		return "", err
 	}
 	return rndStr, nil
 }
@@ -101,12 +109,17 @@ func (s *Service) readSession(sessionId string, dest interface{}) error {
 
 // Deletes session key and related session attributes.
 func (s *Service) deleteSession(sessionId string) error {
-	num, err := s.db.Del(makeSessionKey(sessionId)).Result()
-	if err != nil {
+	session := makeSessionKey(sessionId)
+	// Retrieve a user name associated with the session.
+	// Remove a session id from the users's list of sessions.
+	if user, err := s.db.HGet(session, "user_id").Result(); err != nil {
 		return err
+	} else {
+		s.db.LRem(makeUserKey(user), 0, sessionId)
 	}
-	if num == 0 {
-		return errors.New("session id not found")
+	// Delete a session itself.
+	if err := s.db.Del(session).Err(); err != nil {
+		return err
 	}
 	return nil
 }
