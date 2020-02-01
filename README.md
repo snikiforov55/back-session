@@ -66,3 +66,10 @@ docker build -t go-session-srv -f Dockerfile .
 ```
 docker run -it --publish 8090:8090 --rm --name go-session --link redis go-session-srv
 ```
+## Testing commands
+* Create session
+```curl http://localhost:8090/session -H "Content-Type: application/json" -X POST -d '{"user_id":"user007"}' -v```
+* View session
+```curl http://localhost:8090/session/FBC9W2wccBywDCzmXaOG-CxJczzfe5Kyf9KoNgNgN343bf1RO7xQNkT1z44BbMg=  -X GET -v```
+* Delete session
+```curl http://localhost:8090/session/FBC9W2wccBywDCzmXaOG-CxJczzfe5Kyf9KoNgNgN343bf1RO7xQNkT1z44BbMg=  -X DELETE -v```
