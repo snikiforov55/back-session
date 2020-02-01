@@ -1,7 +1,6 @@
 package session
 
 import (
-	"bytes"
 	"encoding/json"
 	"github.com/gorilla/mux"
 	"log"
@@ -27,29 +26,24 @@ func (s *Service) handleCreateSession() http.HandlerFunc {
 			return
 		}
 		// Create a new session for a provided userSessionAttr id
-		var buf bytes.Buffer
 		str, err := s.createSession(userSessionAttr, s.sessionExpirationSec)
 		if err != nil {
 			reportError(w, http.StatusInternalServerError,
 				"Failed to create session in the database. Error: "+err.Error())
 			return
 		}
-		s := outSession{
+		session := outSession{
 			str,
 		}
-		err = json.NewEncoder(&buf).Encode(s)
-		if err != nil {
+		if js, err := json.Marshal(session); err != nil {
 			reportError(w, http.StatusInternalServerError,
 				"Failed to encode session struct to json buffer. Error: "+err.Error())
 			return
-		}
-		// Write response
-		w.WriteHeader(http.StatusOK)
-		w.Header().Set("Content-Type", "json")
-		_, err = w.Write(buf.Bytes())
-		if err != nil {
-			reportError(w, http.StatusInternalServerError,
-				"Failed to write a session struct to a response body. Error: "+err.Error())
+		} else {
+			header := w.Header()
+			header.Set("Content-Type", "application/json")
+			header.Set("Cache-Control", "no-cache, no-store")
+			w.Write(js)
 		}
 	}
 }
@@ -65,22 +59,23 @@ func (s *Service) handleGetSessionAttributes() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
 		sessionId := vars["id"]
-		var user SessionAttributes
-		err := s.readSession(sessionId, &user)
+		var session SessionAttributes
+		err := s.readSession(sessionId, &session)
 		if err != nil {
 			reportError(w, http.StatusNotFound,
 				"Failed to retrieve session struct from database. Error: "+err.Error())
 			return
 		}
-		var buf bytes.Buffer
-		err = json.NewEncoder(&buf).Encode(user)
-		if err != nil {
+		if js, err := json.Marshal(session); err != nil {
 			reportError(w, http.StatusInternalServerError,
 				"Failed to encode session struct to json buffer. Error: "+err.Error())
 			return
+		} else {
+			header := w.Header()
+			header.Set("Content-Type", "application/json")
+			header.Set("Cache-Control", "no-cache, no-store")
+			w.Write(js)
 		}
-		w.WriteHeader(http.StatusOK)
-		w.Write(buf.Bytes())
 	}
 }
 
