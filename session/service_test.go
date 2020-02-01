@@ -140,7 +140,7 @@ func TestGetSessionAttributes(t *testing.T) {
 		"",
 		"",
 	}
-	id, errId := srv.createSession(user, 10)
+	id, errId := srv.createSession(user.UserId, user, 10)
 	if errId != nil {
 		t.Errorf("%s", errId.Error())
 	}
@@ -176,7 +176,7 @@ func TestReadSessionFailures(t *testing.T) {
 		"",
 		"",
 	}
-	id, errId := srv.createSession(user, 3600)
+	id, errId := srv.createSession(user.UserId, user, 3600)
 	if errId != nil {
 		t.Errorf("%s", errId.Error())
 	}
@@ -214,7 +214,7 @@ func TestGetSessionAttributesFailures(t *testing.T) {
 		"",
 		"",
 	}
-	_, errId := srv.createSession(user, 10)
+	_, errId := srv.createSession(user.UserId, user, 10)
 	if errId != nil {
 		t.Errorf("%s", errId.Error())
 	}
@@ -239,7 +239,7 @@ func TestSessionIncompleteUserInfo(t *testing.T) {
 	}{
 		"userOne",
 	}
-	id, errId := srv.createSession(user, 10)
+	id, errId := srv.createSession(user.UserId, user, 10)
 	if errId != nil {
 		t.Errorf("%s", errId.Error())
 	}
@@ -272,7 +272,7 @@ func TestDropSessionDatabaseOnly(t *testing.T) {
 	}{
 		"userOne",
 	}
-	id, errId := srv.createSession(user, 10)
+	id, errId := srv.createSession(user.UserId, user, 10)
 	if errId != nil {
 		t.Errorf("%s", errId.Error())
 	}
@@ -305,7 +305,7 @@ func TestDropSession(t *testing.T) {
 	}{
 		"userOne",
 	}
-	id, errId := srv.createSession(user, 10)
+	id, errId := srv.createSession(user.UserId, user, 10)
 	if errId != nil {
 		t.Errorf("%s", errId.Error())
 	}
@@ -340,7 +340,7 @@ func TestUpdateSessionDB(t *testing.T) {
 	}{
 		"userOne",
 	}
-	id, errId := srv.createSession(sessionInit, 10)
+	id, errId := srv.createSession(sessionInit.UserId, sessionInit, 10)
 	if errId != nil {
 		t.Errorf("%s", errId.Error())
 	}
