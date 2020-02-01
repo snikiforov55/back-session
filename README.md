@@ -64,5 +64,5 @@ docker build -t go-session-srv -f Dockerfile .
 ### Run
 
 ```
-docker run -it --publish 8090:8090   go-session-srv
+docker run -it --publish 8090:8090 --rm --name go-session --link redis go-session-srv
 ```

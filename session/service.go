@@ -6,15 +6,6 @@ import (
 	"net/http"
 )
 
-type SessionAttributes struct {
-	UserId             string `json:"user_id"`
-	DeviceId           string `json:"device_id"`
-	AuthenticationCode string `json:"auth_code"`
-	AccessToken        string `json:"access_token"`
-	RefreshToken       string `json:"refresh_token"`
-	UserEmail          string `json:"user_email"`
-}
-
 type Service struct {
 	db     redis.Cmdable
 	Router *mux.Router
@@ -23,12 +14,12 @@ type Service struct {
 	sessionExpirationSec int
 }
 
-func NewServer(client redis.Cmdable) *Service {
+func NewServer(client redis.Cmdable, defaultSessionExpSec int) *Service {
 	s := Service{
 		client,
 		mux.NewRouter().StrictSlash(true),
 		randomString,
-		3600 * 24 * 365,
+		defaultSessionExpSec,
 	}
 	s.routes()
 	return &s

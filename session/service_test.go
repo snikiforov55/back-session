@@ -36,7 +36,7 @@ func setupServer() (*miniredis.Miniredis, *Service, error) {
 	client := redis.NewClient(&redis.Options{
 		Addr: mr.Addr(),
 	})
-	srv := NewServer(client)
+	srv := NewServer(client, DefaultSessionExpirationSec)
 	srv.randomString = testRandomString
 
 	return mr, srv, nil
@@ -92,7 +92,7 @@ func TestCreateSession(t *testing.T) {
 }
 
 func TestCreateSessionNoUser(t *testing.T) {
-	srv := NewServer(nil)
+	srv := NewServer(nil, DefaultSessionExpirationSec)
 	user := struct {
 		UserId string `json:"user_id"`
 	}{
