@@ -37,7 +37,7 @@ func setupServer() (*miniredis.Miniredis, *Service, error) {
 	client := redis.NewClient(&redis.Options{
 		Addr: mr.Addr(),
 	})
-	srv := NewServer(client, DefaultSessionExpirationSec)
+	srv, _ := NewServer(client, DefaultSessionExpirationSec)
 	srv.randomString = testRandomString
 
 	return mr, srv, nil
@@ -93,7 +93,7 @@ func TestCreateSession(t *testing.T) {
 }
 
 func TestCreateSessionNoUser(t *testing.T) {
-	srv := NewServer(nil, DefaultSessionExpirationSec)
+	srv, _ := NewServer(nil, DefaultSessionExpirationSec)
 	user := struct {
 		UserId string `json:"user_id"`
 	}{
@@ -366,4 +366,42 @@ func TestUpdateSessionDB(t *testing.T) {
 		t.Error("Expecting a call fail due to invalid session ID but it didn't")
 	}
 	mr.Close()
+}
+
+func TestUpdateSession(t *testing.T) {
+	//mr, srv, errSrv := setupServer()
+	//if errSrv != nil {
+	//	t.Error(errSrv)
+	//}
+	//user := SessionAttributes {
+	//	"userOne",
+	//	"device_one",
+	//	"auth_code_one",
+	//	"access_token_one",
+	//	"refresh_token_one",
+	//	"user@email.provider",
+	//}
+	//id, errId := srv.createSession(user.UserId, user, 10)
+	//if errId != nil {
+	//	t.Errorf("%s", errId.Error())
+	//}
+	//req, err := http.NewRequest("PATCH", "/session", nil)
+	//if err != nil {
+	//	t.Error(err)
+	//}
+	//w := httptest.NewRecorder()
+	//srv.ServeHTTP(w, req)
+	//if w.Code == http.StatusOK {
+	//	t.Errorf("Expected an error when deleteing non existing key but got StatusOK")
+	//}
+	//req, err = http.NewRequest("DELETE", "/session/"+id, nil)
+	//if err != nil {
+	//	t.Error(err)
+	//}
+	//w = httptest.NewRecorder()
+	//srv.ServeHTTP(w, req)
+	//if w.Code != http.StatusOK {
+	//	t.Errorf("Expected no error when deleteing existing key but got %d", w.Code)
+	//}
+	//mr.Close()
 }

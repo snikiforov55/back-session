@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 )
 
+const UserIdVarName = "user_id"
+
 func RandomString(n int) (string, error) {
 	b := make([]byte, n)
 	_, err := rand.Read(b)
@@ -55,7 +57,9 @@ type Database interface {
 	deleteSession(sessionId string) error
 
 	// Updates session attributes.
-	// The userId cannot be changed. It should match the user_id provided when the session was created.
-	// The userId mays provided in the updatePayload but will be ignored.
-	updateSession(userId string, sessionId string, updatePayload interface{}, dest interface{}) error
+	// The userId cannot be changed. If it is provided in the payload
+	// it should match the user_id provided when the session was created.
+	// If it does not match the update fails.
+	// The userId may be provided in the updatePayload but will be ignored in the updates.
+	updateSession(sessionId string, updatePayload interface{}, dest interface{}) error
 }

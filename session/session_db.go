@@ -86,7 +86,7 @@ func (s *Service) deleteSession(sessionId string) error {
 	session := makeSessionKey(sessionId)
 	// Retrieve a user name associated with the session.
 	// Remove a session id from the users's list of sessions.
-	if user, err := s.db.HGet(session, "user_id").Result(); err != nil {
+	if user, err := s.db.HGet(session, db.UserIdVarName).Result(); err != nil {
 		return err
 	} else {
 		s.db.LRem(makeUserKey(user), 0, sessionId)
@@ -108,8 +108,25 @@ func (s *Service) updateSession(sessionId string, src interface{}, dest interfac
 		return errors.New(fmt.Sprintf("Session \"%s\"Not found", sessionId))
 	}
 	m := db.ObjectToMap(src)
+	// If user_id is provided in the payload check if it matches the provided user id.
+	// If user id does not match the database return error.
+	if uid, ok := m[db.UserIdVarName]; ok {
+		uidDb, err := s.db.HGet(sessionKey, db.UserIdVarName).Result()
+		if err != nil {
+			return errors.New(fmt.Sprintf("Session \"%s\" does not have a user id.", sessionId))
+		}
+		if uidDb != uid {
+			return errors.New(fmt.Sprintf("User id \"%s\" stored in the session \"%s\" does not "+
+				"match a requested user id \"%s\".", uidDb, sessionId, uid))
+		}
+	}
+	// Continue with the update.
 	pipe := s.db.TxPipeline()
 	for k, v := range m {
+		// Do not set user id
+		if k == db.UserIdVarName {
+			continue
+		}
 		if err := pipe.HSet(sessionKey, k, v).Err(); err != nil {
 			pipe.Discard()
 			return err
