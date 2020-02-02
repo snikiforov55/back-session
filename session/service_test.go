@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"github.com/alicebob/miniredis"
 	"github.com/go-redis/redis"
+	"github.com/snikiforov55/back-session/session/db"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -19,7 +20,7 @@ func testRandomString(_ int) (string, error) {
 }
 
 func TestRandomString(t *testing.T) {
-	str, err := randomString(37)
+	str, err := db.RandomString(37)
 	if err != nil {
 		t.Error(err)
 	}

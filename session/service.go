@@ -3,6 +3,7 @@ package session
 import (
 	"github.com/go-redis/redis"
 	"github.com/gorilla/mux"
+	"github.com/snikiforov55/back-session/session/db"
 	"net/http"
 )
 
@@ -18,7 +19,7 @@ func NewServer(client redis.Cmdable, defaultSessionExpSec int) *Service {
 	s := Service{
 		client,
 		mux.NewRouter().StrictSlash(true),
-		randomString,
+		db.RandomString,
 		defaultSessionExpSec,
 	}
 	s.routes()

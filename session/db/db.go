@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 )
 
-func randomString(n int) (string, error) {
+func RandomString(n int) (string, error) {
 	b := make([]byte, n)
 	_, err := rand.Read(b)
 	// Note that err == nil only if we read len(b) bytes.
@@ -15,7 +15,7 @@ func randomString(n int) (string, error) {
 	}
 	return base64.URLEncoding.EncodeToString(b), err
 }
-func objectToMap(userInfo interface{}) map[string]interface{} {
+func ObjectToMap(userInfo interface{}) map[string]interface{} {
 	var uInfoMap map[string]interface{}
 	inrec, _ := json.Marshal(userInfo)
 	if err := json.Unmarshal(inrec, &uInfoMap); err != nil {
@@ -23,7 +23,7 @@ func objectToMap(userInfo interface{}) map[string]interface{} {
 	}
 	return uInfoMap
 }
-func objectFromMap(m map[string]interface{}, userInfo interface{}) error {
+func ObjectFromMap(m map[string]interface{}, userInfo interface{}) error {
 	inrec, _ := json.Marshal(m)
 	json.Unmarshal(inrec, userInfo)
 

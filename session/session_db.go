@@ -1,37 +1,11 @@
 package session
 
 import (
-	"crypto/rand"
-	"encoding/base64"
-	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/snikiforov55/back-session/session/db"
 	"time"
 )
-
-func randomString(n int) (string, error) {
-	b := make([]byte, n)
-	_, err := rand.Read(b)
-	// Note that err == nil only if we read len(b) bytes.
-	if err != nil {
-		return "", err
-	}
-	return base64.URLEncoding.EncodeToString(b), err
-}
-func objectToMap(userInfo interface{}) map[string]interface{} {
-	var uInfoMap map[string]interface{}
-	inrec, _ := json.Marshal(userInfo)
-	if err := json.Unmarshal(inrec, &uInfoMap); err != nil {
-		return uInfoMap
-	}
-	return uInfoMap
-}
-func objectFromMap(m map[string]interface{}, userInfo interface{}) error {
-	inrec, _ := json.Marshal(m)
-	json.Unmarshal(inrec, userInfo)
-
-	return nil
-}
 
 func makeSessionKey(id string) string {
 	return "session:" + id
@@ -44,7 +18,7 @@ func makeUserKey(id string) string {
 // If user id is not provided the function fails and no records in the database are created.
 // Returns a session id string on success.
 func (s *Service) createSession(userId string, sessionAttribs interface{}, expirationSec int) (string, error) {
-	uInfoMap := objectToMap(sessionAttribs)
+	uInfoMap := db.ObjectToMap(sessionAttribs)
 
 	rndStr, errRnd := s.randomString(47)
 	if errRnd != nil {
@@ -77,7 +51,7 @@ func (s *Service) createSession(userId string, sessionAttribs interface{}, expir
 //	and fills the output object dest.
 //	The attributes which do not exist are replaced by the empty string.
 func (s *Service) readSession(sessionId string, dest interface{}) error {
-	m := objectToMap(dest)
+	m := db.ObjectToMap(dest)
 	keys := make([]string, len(m))
 	values := make([]interface{}, len(m))
 	var i = 0
@@ -104,7 +78,7 @@ func (s *Service) readSession(sessionId string, dest interface{}) error {
 	if isNil {
 		return errors.New("requested attributes not found")
 	}
-	return objectFromMap(m, dest)
+	return db.ObjectFromMap(m, dest)
 }
 
 // Deletes session key and related session attributes.
@@ -133,7 +107,7 @@ func (s *Service) updateSession(sessionId string, src interface{}, dest interfac
 	if res == 0 {
 		return errors.New(fmt.Sprintf("Session \"%s\"Not found", sessionId))
 	}
-	m := objectToMap(src)
+	m := db.ObjectToMap(src)
 	pipe := s.db.TxPipeline()
 	for k, v := range m {
 		if err := pipe.HSet(sessionKey, k, v).Err(); err != nil {
