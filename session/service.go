@@ -15,7 +15,7 @@ type Service struct {
 	sessionExpirationSec int
 }
 
-func NewServer(client redis.Cmdable, defaultSessionExpSec int) *Service {
+func NewServer(client redis.Cmdable, defaultSessionExpSec int) (*Service, error) {
 	s := Service{
 		client,
 		mux.NewRouter().StrictSlash(true),
@@ -23,7 +23,7 @@ func NewServer(client redis.Cmdable, defaultSessionExpSec int) *Service {
 		defaultSessionExpSec,
 	}
 	s.routes()
-	return &s
+	return &s, nil
 }
 func (s *Service) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	s.Router.ServeHTTP(w, req)

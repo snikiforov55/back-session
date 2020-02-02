@@ -70,7 +70,11 @@ func main() {
 		DB:       config.RedisDb,       // use default DB
 	})
 
-	server := session.NewServer(client, config.SessionExpSec)
+	server, err := session.NewServer(client, config.SessionExpSec)
+	if err != nil {
+		log.Panicln("Failed to create a Session object. Error: " + err.Error())
+		return
+	}
 
 	StartWebServer(config.ServicePort, server.Router)
 }
