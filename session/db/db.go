@@ -7,6 +7,8 @@ import (
 )
 
 const UserIdVarName = "user_id"
+const SessionIdName = "session_id"
+const SessionAttrName = "session_attributes"
 
 func RandomString(n int) (string, error) {
 	b := make([]byte, n)

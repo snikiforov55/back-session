@@ -54,8 +54,47 @@ func (s *Service) handleCreateSession() http.HandlerFunc {
 
 func (s *Service) handleUpdateSessionAttributes() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		//vars := mux.Vars(r)
-		//sessionId := vars["id"]
+		payload := struct {
+			SessionId         string            `json:"session_id"`
+			SessionAttributes map[string]string `json:"session_attributes"`
+		}{
+			"",
+			make(map[string]string),
+		}
+		//var payload map[string]interface{}
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			reportError(w, http.StatusUnprocessableEntity,
+				"Failed to unmarhal a payload from a request. Error: "+err.Error())
+			return
+		}
+		if payload.SessionId == "" {
+			reportError(w, http.StatusBadRequest, "Payload does not contain a session id")
+			return
+		}
+		if payload.SessionAttributes == nil || len(payload.SessionAttributes) == 0 {
+			reportError(w, http.StatusBadRequest, "Payload does not contain session attributes to set")
+			return
+		}
+		response := payload.SessionAttributes
+		if err := s.updateSession(payload.SessionId, payload.SessionAttributes, &response); err != nil {
+			reportError(w, http.StatusBadRequest, "Payload does not contain session attributes to set")
+			return
+		}
+		if js, err := json.Marshal(response); err != nil {
+			reportError(w, http.StatusInternalServerError,
+				"Failed to encode session struct to json buffer. Error: "+err.Error())
+			return
+		} else {
+			header := w.Header()
+			header.Set("Content-Type", "application/json")
+			header.Set("Cache-Control", "no-cache, no-store")
+			if _, err := w.Write(js); err != nil {
+				reportError(w, http.StatusInternalServerError,
+					"Failed write a payload to the response. Error: "+err.Error())
+				return
+			}
+		}
+
 	}
 }
 

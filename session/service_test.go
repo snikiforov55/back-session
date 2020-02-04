@@ -362,7 +362,7 @@ func TestUpdateSessionDB(t *testing.T) {
 	if sessionRes.UserId != sessionUpd.UserId || sessionRes.AccessToken != sessionUpd.AccessToken {
 		t.Errorf("Returned session does not match the update %s != %s", sessionUpd, sessionRes)
 	}
-	if err := srv.updateSession("sessionId", sessionUpd, &sessionRes); err == nil {
+	if err := srv.updateSession("SessionId", sessionUpd, &sessionRes); err == nil {
 		t.Error("Expecting a call fail due to invalid session ID but it didn't")
 	}
 	mr.Close()
@@ -386,8 +386,8 @@ func TestUpdateSession(t *testing.T) {
 		t.Errorf("%s", errId.Error())
 	}
 	userUpdate := struct {
-		sessionId string
-		session   SessionAttributes
+		SessionId string            `json:"session_id"`
+		Session   SessionAttributes `json:"session_attributes"`
 	}{
 		id,
 		SessionAttributes{
@@ -399,12 +399,9 @@ func TestUpdateSession(t *testing.T) {
 			"userCreate@email.provider",
 		},
 	}
-	var buf bytes.Buffer
-	err := json.NewEncoder(&buf).Encode(userUpdate)
-	if err != nil {
-		t.Error(err)
-	}
-	req, err := http.NewRequest("PATCH", "/session", &buf)
+	js, err := json.Marshal(userUpdate)
+
+	req, err := http.NewRequest("PATCH", "/session", bytes.NewBuffer(js))
 	if err != nil {
 		t.Error(err)
 	}
@@ -418,12 +415,12 @@ func TestUpdateSession(t *testing.T) {
 	if err != nil {
 		t.Errorf("Failed to decode PATCH /session http response. Error: %s", err.Error())
 	}
-	if userUpdate.session.UserId != userPatched.UserId ||
-		userUpdate.session.AuthenticationCode != userPatched.AuthenticationCode ||
-		userUpdate.session.AccessToken != userPatched.AccessToken ||
-		userUpdate.session.RefreshToken != userPatched.RefreshToken ||
-		userUpdate.session.UserEmail != userPatched.UserEmail ||
-		userUpdate.session.DeviceId != userPatched.DeviceId {
+	if userUpdate.Session.UserId != userPatched.UserId ||
+		userUpdate.Session.AuthenticationCode != userPatched.AuthenticationCode ||
+		userUpdate.Session.AccessToken != userPatched.AccessToken ||
+		userUpdate.Session.RefreshToken != userPatched.RefreshToken ||
+		userUpdate.Session.UserEmail != userPatched.UserEmail ||
+		userUpdate.Session.DeviceId != userPatched.DeviceId {
 
 		t.Errorf("Response from the service does not match the requested update.")
 	}

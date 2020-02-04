@@ -44,10 +44,10 @@ func (s *Service) createSession(userId string, sessionAttribs interface{}, expir
 	return rndStr, nil
 }
 
-// Returns session attributes for the provided sessionId
-// If sessionId does not exist returns error
+// Returns session attributes for the provided SessionId
+// If SessionId does not exist returns error
 // If none of the requested attributes found returns error
-// If sessionId exists and at least one of the attributes exists returns error == nil
+// If SessionId exists and at least one of the attributes exists returns error == nil
 //	and fills the output object dest.
 //	The attributes which do not exist are replaced by the empty string.
 func (s *Service) readSession(sessionId string, dest interface{}) error {
