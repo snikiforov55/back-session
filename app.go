@@ -64,12 +64,6 @@ func main() {
 
 	config := NewConfig()
 
-	client := redis.NewClient(&redis.Options{
-		Addr:     config.RedisHost + ":" + config.RedisPort,
-		Password: config.RedisPassword, // no password set
-		DB:       config.RedisDb,       // use default DB
-	})
-
 	server, err := session.NewServer(client, config.SessionExpSec)
 	if err != nil {
 		log.Panicln("Failed to create a Session object. Error: " + err.Error())

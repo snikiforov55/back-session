@@ -1,30 +1,44 @@
-package session
+package db
 
 import (
 	"errors"
 	"fmt"
-	"github.com/snikiforov55/back-session/session/db"
+	"github.com/go-redis/redis"
 	"time"
 )
 
-func makeSessionKey(id string) string {
-	return "session:" + id
+type Redis struct {
+	db redis.Cmdable
 }
-func makeUserKey(id string) string {
-	return "user:" + id
+type RedisConfig struct {
+	RedisHost     string `json:"redis_host"`
+	RedisPort     string `json:"redis_port"`
+	RedisPassword string `json:"redis_password"`
+	RedisDb       int    `json:"redis_db"`
+	SessionExpSec int    `json:"session_exp_sec"`
+	ServicePort   string `json:service_port`
+}
+
+func NewRedisClient(config RedisConfig) redis.Cmdable {
+	client := redis.NewClient(&redis.Options{
+		Addr:     config.RedisHost + ":" + config.RedisPort,
+		Password: config.RedisPassword, // no password set
+		DB:       config.RedisDb,       // use default DB
+	})
+	return client
 }
 
 // Creates a session for the provided user id.
 // If user id is not provided the function fails and no records in the database are created.
 // Returns a session id string on success.
-func (s *Service) createSession(userId string, sessionAttribs interface{}, expirationSec int) (string, error) {
-	uInfoMap := db.ObjectToMap(sessionAttribs)
+func (s *Redis) createSession(userId string, sessionAttribs interface{}, expirationSec int) (string, error) {
+	uInfoMap := ObjectToMap(sessionAttribs)
 
-	rndStr, errRnd := s.randomString(47)
+	rndStr, errRnd := RandomString(47)
 	if errRnd != nil {
 		return "", errRnd
 	}
-	sessionId := makeSessionKey(rndStr)
+	sessionId := MakeSessionKey(rndStr)
 	//TODO replace iteration through a map after a miniredis fix will be available
 	for k, v := range uInfoMap {
 		err := s.db.HSet(sessionId, k, v).Err()
@@ -38,7 +52,7 @@ func (s *Service) createSession(userId string, sessionAttribs interface{}, expir
 			return "", nil
 		}
 	}
-	if err := s.db.RPush(makeUserKey(userId), rndStr).Err(); err != nil {
+	if err := s.db.RPush(MakeUserKey(userId), rndStr).Err(); err != nil {
 		return "", err
 	}
 	return rndStr, nil
@@ -50,15 +64,15 @@ func (s *Service) createSession(userId string, sessionAttribs interface{}, expir
 // If SessionId exists and at least one of the attributes exists returns error == nil
 //	and fills the output object dest.
 //	The attributes which do not exist are replaced by the empty string.
-func (s *Service) readSession(sessionId string, dest interface{}) error {
-	m := db.ObjectToMap(dest)
+func (s *Redis) readSession(sessionId string, dest interface{}) error {
+	m := ObjectToMap(dest)
 	keys := make([]string, len(m))
 	values := make([]interface{}, len(m))
 	var i = 0
 	//TODO convert to HMGET
 	for k, _ := range m {
 		keys[i] = k
-		value, err := s.db.HGet(makeSessionKey(sessionId), k).Result()
+		value, err := s.db.HGet(MakeSessionKey(sessionId), k).Result()
 		if err != nil || value == "" {
 			values[i] = nil
 		} else {
@@ -78,18 +92,18 @@ func (s *Service) readSession(sessionId string, dest interface{}) error {
 	if isNil {
 		return errors.New("requested attributes not found")
 	}
-	return db.ObjectFromMap(m, dest)
+	return ObjectFromMap(m, dest)
 }
 
 // Deletes session key and related session attributes.
-func (s *Service) deleteSession(sessionId string) error {
-	session := makeSessionKey(sessionId)
+func (s *Redis) deleteSession(sessionId string) error {
+	session := MakeSessionKey(sessionId)
 	// Retrieve a user name associated with the session.
 	// Remove a session id from the users's list of sessions.
-	if user, err := s.db.HGet(session, db.UserIdVarName).Result(); err != nil {
+	if user, err := s.db.HGet(session, UserIdVarName).Result(); err != nil {
 		return err
 	} else {
-		s.db.LRem(makeUserKey(user), 0, sessionId)
+		s.db.LRem(MakeUserKey(user), 0, sessionId)
 	}
 	// Delete a session itself.
 	if err := s.db.Del(session).Err(); err != nil {
@@ -98,8 +112,8 @@ func (s *Service) deleteSession(sessionId string) error {
 	return nil
 }
 
-func (s *Service) updateSession(sessionId string, src interface{}, dest interface{}) error {
-	sessionKey := makeSessionKey(sessionId)
+func (s *Redis) updateSession(sessionId string, src interface{}, dest interface{}) error {
+	sessionKey := MakeSessionKey(sessionId)
 	res, err := s.db.Exists(sessionKey).Result()
 	if err != nil {
 		return err
@@ -107,11 +121,11 @@ func (s *Service) updateSession(sessionId string, src interface{}, dest interfac
 	if res == 0 {
 		return errors.New(fmt.Sprintf("Session \"%s\"Not found", sessionId))
 	}
-	m := db.ObjectToMap(src)
+	m := ObjectToMap(src)
 	// If user_id is provided in the payload check if it matches the provided user id.
 	// If user id does not match the database return error.
-	if uid, ok := m[db.UserIdVarName]; ok {
-		uidDb, err := s.db.HGet(sessionKey, db.UserIdVarName).Result()
+	if uid, ok := m[UserIdVarName]; ok {
+		uidDb, err := s.db.HGet(sessionKey, UserIdVarName).Result()
 		if err != nil {
 			return errors.New(fmt.Sprintf("Session \"%s\" does not have a user id.", sessionId))
 		}
@@ -124,7 +138,7 @@ func (s *Service) updateSession(sessionId string, src interface{}, dest interfac
 	pipe := s.db.TxPipeline()
 	for k, v := range m {
 		// Do not set user id
-		if k == db.UserIdVarName {
+		if k == UserIdVarName {
 			continue
 		}
 		if err := pipe.HSet(sessionKey, k, v).Err(); err != nil {

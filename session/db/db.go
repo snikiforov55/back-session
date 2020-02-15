@@ -34,10 +34,10 @@ func ObjectFromMap(m map[string]interface{}, userInfo interface{}) error {
 	return nil
 }
 
-func makeSessionKey(id string) string {
+func MakeSessionKey(id string) string {
 	return "session:" + id
 }
-func makeUserKey(id string) string {
+func MakeUserKey(id string) string {
 	return "user:" + id
 }
 
