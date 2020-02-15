@@ -60,7 +60,7 @@ func TestCreateSession(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	} // json.NewEncoder
-	req, err := http.NewRequest("POST", "/session", &buf)
+	req, err := http.NewRequest("POST", Api()+"/session", &buf)
 	if err != nil {
 		t.Error(err)
 	}
@@ -100,7 +100,7 @@ func TestCreateSessionNoUser(t *testing.T) {
 		UserId: "",
 	}
 	var buf bytes.Buffer
-	req, err := http.NewRequest("POST", "/session", &buf)
+	req, err := http.NewRequest("POST", Api()+"/session", &buf)
 	if err != nil {
 		t.Error(err)
 	}
@@ -113,7 +113,7 @@ func TestCreateSessionNoUser(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	} // json.NewEncoder
-	req, err = http.NewRequest("POST", "/session", &buf)
+	req, err = http.NewRequest("POST", Api()+"/session", &buf)
 	if err != nil {
 		t.Error(err)
 	}
@@ -145,7 +145,7 @@ func TestGetSessionAttributes(t *testing.T) {
 	if errId != nil {
 		t.Errorf("%s", errId.Error())
 	}
-	req, err := http.NewRequest("GET", "/session/"+id, nil)
+	req, err := http.NewRequest("GET", Api()+"/session/"+id, nil)
 	if err != nil {
 		t.Error(err)
 	}
@@ -219,7 +219,7 @@ func TestGetSessionAttributesFailures(t *testing.T) {
 	if errId != nil {
 		t.Errorf("%s", errId.Error())
 	}
-	req, err := http.NewRequest("GET", "/session/"+"id", nil)
+	req, err := http.NewRequest("GET", Api()+"/session/"+"id", nil)
 	if err != nil {
 		t.Error(err)
 	}
@@ -244,7 +244,7 @@ func TestSessionIncompleteUserInfo(t *testing.T) {
 	if errId != nil {
 		t.Errorf("%s", errId.Error())
 	}
-	req, err := http.NewRequest("GET", "/session/"+id, nil)
+	req, err := http.NewRequest("GET", Api()+"/session/"+id, nil)
 	if err != nil {
 		t.Error(err)
 	}
@@ -310,7 +310,7 @@ func TestDropSession(t *testing.T) {
 	if errId != nil {
 		t.Errorf("%s", errId.Error())
 	}
-	req, err := http.NewRequest("DELETE", "/session/"+"id", nil)
+	req, err := http.NewRequest("DELETE", Api()+"/session/"+"id", nil)
 	if err != nil {
 		t.Error(err)
 	}
@@ -319,7 +319,7 @@ func TestDropSession(t *testing.T) {
 	if w.Code == http.StatusOK {
 		t.Errorf("Expected an error when deleteing non existing key but got StatusOK")
 	}
-	req, err = http.NewRequest("DELETE", "/session/"+id, nil)
+	req, err = http.NewRequest("DELETE", Api()+"/session/"+id, nil)
 	if err != nil {
 		t.Error(err)
 	}
@@ -401,7 +401,7 @@ func TestUpdateSession(t *testing.T) {
 	}
 	js, err := json.Marshal(userUpdate)
 
-	req, err := http.NewRequest("PATCH", "/session", bytes.NewBuffer(js))
+	req, err := http.NewRequest("PATCH", Api()+"/session", bytes.NewBuffer(js))
 	if err != nil {
 		t.Error(err)
 	}
@@ -448,7 +448,7 @@ func TestUpdateSessionFailed(t *testing.T) {
 		if js, err := json.Marshal(body); err != nil {
 			t.Error(err)
 		} else {
-			if req, err := http.NewRequest("PATCH", "/session", bytes.NewBuffer(js)); err != nil {
+			if req, err := http.NewRequest("PATCH", Api()+"/session", bytes.NewBuffer(js)); err != nil {
 				t.Error(err)
 			} else {
 				w := httptest.NewRecorder()
@@ -476,7 +476,7 @@ func TestUpdateSessionFailed(t *testing.T) {
 	if js, err := json.Marshal(userUpdate); err != nil {
 		t.Error(err)
 	} else {
-		if req, err := http.NewRequest("PATCH", "/session", bytes.NewBuffer(js)); err != nil {
+		if req, err := http.NewRequest("PATCH", Api()+"/session", bytes.NewBuffer(js)); err != nil {
 			t.Error(err)
 		} else {
 			w := httptest.NewRecorder()
