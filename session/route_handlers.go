@@ -77,7 +77,7 @@ func (s *Service) handleUpdateSessionAttributes() http.HandlerFunc {
 		}
 		response := payload.SessionAttributes
 		if err := s.updateSession(payload.SessionId, payload.SessionAttributes, &response); err != nil {
-			reportError(w, http.StatusBadRequest, "Payload does not contain session attributes to set")
+			reportError(w, http.StatusBadRequest, "Failed to update database. "+err.Error())
 			return
 		}
 		if js, err := json.Marshal(response); err != nil {

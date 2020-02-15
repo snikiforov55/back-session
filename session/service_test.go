@@ -427,3 +427,81 @@ func TestUpdateSession(t *testing.T) {
 
 	mr.Close()
 }
+func TestUpdateSessionFailed(t *testing.T) {
+	mr, srv, errSrv := setupServer()
+	if errSrv != nil {
+		t.Error(errSrv)
+	}
+	userCreate := SessionAttributes{
+		"userOne",
+		"device_one",
+		"",
+		"",
+		"",
+		"userCreate@email.provider",
+	}
+	id, errId := srv.createSession(userCreate.UserId, userCreate, 10)
+	if errId != nil {
+		t.Errorf("%s", errId.Error())
+	}
+	requestWithError := func(body interface{}, reason string) {
+		if js, err := json.Marshal(body); err != nil {
+			t.Error(err)
+		} else {
+			if req, err := http.NewRequest("PATCH", "/session", bytes.NewBuffer(js)); err != nil {
+				t.Error(err)
+			} else {
+				w := httptest.NewRecorder()
+				srv.ServeHTTP(w, req)
+				if w.Code == http.StatusOK {
+					t.Errorf("Expecting a request to fail due to " + reason + ", but request succeded.")
+				}
+			}
+		}
+	}
+	userUpdate := struct {
+		SessionId string            `json:"session_id"`
+		Session   SessionAttributes `json:"session_attributes"`
+	}{
+		id,
+		SessionAttributes{
+			"userOne",
+			"device_one",
+			"auth_code_one",
+			"access_token_one",
+			"refresh_token_one",
+			"userCreate@email.provider",
+		},
+	}
+	if js, err := json.Marshal(userUpdate); err != nil {
+		t.Error(err)
+	} else {
+		if req, err := http.NewRequest("PATCH", "/session", bytes.NewBuffer(js)); err != nil {
+			t.Error(err)
+		} else {
+			w := httptest.NewRecorder()
+			srv.ServeHTTP(w, req)
+			if w.Code != http.StatusOK {
+				t.Errorf("Expecting a request to succede, but request faileds.")
+			}
+		}
+	}
+
+	userUpdate.SessionId = "non-existing-session"
+	requestWithError(userUpdate, "non-existing session id")
+
+	userUpdate.SessionId = id
+	userUpdate.Session.UserId = "unknown_user"
+	requestWithError(userUpdate, "non-existing user id")
+
+	userUpdateNoBody := struct {
+		SessionId string            `json:session_id`
+		Session   map[string]string `json:session_attributes`
+	}{
+		id,
+		map[string]string{"": ""},
+	}
+	requestWithError(userUpdateNoBody, "empty request body")
+
+	mr.Close()
+}
