@@ -8,33 +8,36 @@ import (
 )
 
 type Redis struct {
-	db redis.Cmdable
+	db           redis.Cmdable
+	randomString func(int) (string, error)
 }
 type RedisConfig struct {
 	RedisHost     string `json:"redis_host"`
 	RedisPort     string `json:"redis_port"`
 	RedisPassword string `json:"redis_password"`
 	RedisDb       int    `json:"redis_db"`
-	SessionExpSec int    `json:"session_exp_sec"`
-	ServicePort   string `json:service_port`
 }
 
-func NewRedisClient(config RedisConfig) redis.Cmdable {
+func NewRedisClient(config *RedisConfig, randomString func(int) (string, error)) *Redis {
 	client := redis.NewClient(&redis.Options{
 		Addr:     config.RedisHost + ":" + config.RedisPort,
 		Password: config.RedisPassword, // no password set
 		DB:       config.RedisDb,       // use default DB
 	})
-	return client
+	return &Redis{client, randomString}
+}
+
+func (s *Redis) RandomString() (string, error) {
+	return s.randomString(47)
 }
 
 // Creates a session for the provided user id.
 // If user id is not provided the function fails and no records in the database are created.
 // Returns a session id string on success.
-func (s *Redis) createSession(userId string, sessionAttribs interface{}, expirationSec int) (string, error) {
+func (s *Redis) CreateSession(userId string, sessionAttribs interface{}, expirationSec int) (string, error) {
 	uInfoMap := ObjectToMap(sessionAttribs)
 
-	rndStr, errRnd := RandomString(47)
+	rndStr, errRnd := s.RandomString()
 	if errRnd != nil {
 		return "", errRnd
 	}
@@ -64,7 +67,7 @@ func (s *Redis) createSession(userId string, sessionAttribs interface{}, expirat
 // If SessionId exists and at least one of the attributes exists returns error == nil
 //	and fills the output object dest.
 //	The attributes which do not exist are replaced by the empty string.
-func (s *Redis) readSession(sessionId string, dest interface{}) error {
+func (s *Redis) ReadSession(sessionId string, dest interface{}) error {
 	m := ObjectToMap(dest)
 	keys := make([]string, len(m))
 	values := make([]interface{}, len(m))
@@ -96,7 +99,7 @@ func (s *Redis) readSession(sessionId string, dest interface{}) error {
 }
 
 // Deletes session key and related session attributes.
-func (s *Redis) deleteSession(sessionId string) error {
+func (s *Redis) DeleteSession(sessionId string) error {
 	session := MakeSessionKey(sessionId)
 	// Retrieve a user name associated with the session.
 	// Remove a session id from the users's list of sessions.
@@ -112,7 +115,7 @@ func (s *Redis) deleteSession(sessionId string) error {
 	return nil
 }
 
-func (s *Redis) updateSession(sessionId string, src interface{}, dest interface{}) error {
+func (s *Redis) UpdateSession(sessionId string, src interface{}, dest interface{}) error {
 	sessionKey := MakeSessionKey(sessionId)
 	res, err := s.db.Exists(sessionKey).Result()
 	if err != nil {
@@ -142,14 +145,16 @@ func (s *Redis) updateSession(sessionId string, src interface{}, dest interface{
 			continue
 		}
 		if err := pipe.HSet(sessionKey, k, v).Err(); err != nil {
-			pipe.Discard()
+			if dis_err := pipe.Discard(); dis_err != nil {
+				return errors.New(err.Error() + " followed by " + dis_err.Error())
+			}
 			return err
 		}
 	}
 	if _, err := pipe.Exec(); err != nil {
 		return err
 	}
-	if err := s.readSession(sessionId, dest); err != nil {
+	if err := s.ReadSession(sessionId, dest); err != nil {
 		return err
 	}
 	return nil

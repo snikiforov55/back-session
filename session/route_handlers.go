@@ -26,7 +26,7 @@ func (s *Service) handleCreateSession() http.HandlerFunc {
 			return
 		}
 		// Create a new session for a provided userSessionAttr id
-		str, err := s.createSession(userSessionAttr.UserId, userSessionAttr, s.sessionExpirationSec)
+		str, err := s.db.CreateSession(userSessionAttr.UserId, userSessionAttr, s.sessionExpirationSec)
 		if err != nil {
 			reportError(w, http.StatusInternalServerError,
 				"Failed to create session in the database. Error: "+err.Error())
@@ -76,7 +76,7 @@ func (s *Service) handleUpdateSessionAttributes() http.HandlerFunc {
 			return
 		}
 		response := payload.SessionAttributes
-		if err := s.updateSession(payload.SessionId, payload.SessionAttributes, &response); err != nil {
+		if err := s.db.UpdateSession(payload.SessionId, payload.SessionAttributes, &response); err != nil {
 			reportError(w, http.StatusBadRequest, "Failed to update database. "+err.Error())
 			return
 		}
@@ -103,7 +103,7 @@ func (s *Service) handleGetSessionAttributes() http.HandlerFunc {
 		vars := mux.Vars(r)
 		sessionId := vars["id"]
 		var session SessionAttributes
-		err := s.readSession(sessionId, &session)
+		err := s.db.ReadSession(sessionId, &session)
 		if err != nil {
 			reportError(w, http.StatusNotFound,
 				"Failed to retrieve session struct from database. Error: "+err.Error())
@@ -130,7 +130,7 @@ func (s *Service) handleDropSession() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
 		sessionId := vars["id"]
-		err := s.deleteSession(sessionId)
+		err := s.db.DeleteSession(sessionId)
 		if err != nil {
 			w.WriteHeader(http.StatusNotFound)
 		} else {

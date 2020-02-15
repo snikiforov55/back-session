@@ -1,19 +1,19 @@
 package session
 
 import (
-	"github.com/go-redis/redis"
 	"github.com/gorilla/mux"
+	"github.com/snikiforov55/back-session/session/db"
 	"net/http"
 )
 
 type Service struct {
-	db     redis.Cmdable
+	db     db.Database
 	Router *mux.Router
 	//email  EmailSender
 	sessionExpirationSec int
 }
 
-func NewServer(client redis.Cmdable, defaultSessionExpSec int) (*Service, error) {
+func NewServer(client db.Database, defaultSessionExpSec int) (*Service, error) {
 	s := Service{
 		client,
 		mux.NewRouter().StrictSlash(true),

@@ -7,8 +7,9 @@ import (
 )
 
 const UserIdVarName = "user_id"
-const SessionIdName = "session_id"
-const SessionAttrName = "session_attributes"
+
+//const SessionIdName = "session_id"
+//const SessionAttrName = "session_attributes"
 
 func RandomString(n int) (string, error) {
 	b := make([]byte, n)
@@ -29,11 +30,11 @@ func ObjectToMap(userInfo interface{}) map[string]interface{} {
 }
 func ObjectFromMap(m map[string]interface{}, userInfo interface{}) error {
 	inrec, _ := json.Marshal(m)
-	json.Unmarshal(inrec, userInfo)
-
+	if err := json.Unmarshal(inrec, userInfo); err != nil {
+		return err
+	}
 	return nil
 }
-
 func MakeSessionKey(id string) string {
 	return "session:" + id
 }
@@ -42,10 +43,12 @@ func MakeUserKey(id string) string {
 }
 
 type Database interface {
+	// Returns a random string. Can be customized externally.
+	RandomString() (string, error)
 	// Creates a session for the provided user id.
 	// If user id is not provided the function fails and no records in the database are created.
 	// Returns a session id string on success.
-	createSession(userId string, sessionAttribs interface{}, expirationSec int) (string, error)
+	CreateSession(userId string, sessionAttribs interface{}, expirationSec int) (string, error)
 
 	// Returns session attributes for the provided sessionId
 	// If sessionId does not exist returns error
@@ -53,15 +56,15 @@ type Database interface {
 	// If sessionId exists and at least one of the attributes exists returns error == nil
 	//	and fills the output object dest.
 	//	The attributes which do not exist are replaced by the empty string.
-	readSession(sessionId string, dest interface{}) error
+	ReadSession(sessionId string, dest interface{}) error
 
 	// Deletes session key and related session attributes.
-	deleteSession(sessionId string) error
+	DeleteSession(sessionId string) error
 
 	// Updates session attributes.
 	// The userId cannot be changed. If it is provided in the payload
 	// it should match the user_id provided when the session was created.
 	// If it does not match the update fails.
 	// The userId may be provided in the updatePayload but will be ignored in the updates.
-	updateSession(sessionId string, updatePayload interface{}, dest interface{}) error
+	UpdateSession(sessionId string, updatePayload interface{}, dest interface{}) error
 }

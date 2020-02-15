@@ -1,9 +1,9 @@
 package main
 
 import (
-	"github.com/go-redis/redis"
 	"github.com/gorilla/mux"
 	"github.com/snikiforov55/back-session/session"
+	"github.com/snikiforov55/back-session/session/db"
 	"log"
 	"net/http"
 	"os"
@@ -15,18 +15,14 @@ func StartWebServer(port string, router *mux.Router) {
 	http.Handle("/", router)
 	err := http.ListenAndServe(":"+port, nil) // Goroutine will block here
 	if err != nil {
-		log.Println("An error occured starting HTTP listener at port " + port)
+		log.Println("An error occurred starting HTTP listener at port " + port)
 		log.Println("Error: " + err.Error())
 	}
 }
 
 type Config struct {
-	RedisHost     string `json:"redis_host"`
-	RedisPort     string `json:"redis_port"`
-	RedisPassword string `json:"redis_password"`
-	RedisDb       int    `json:"redis_db"`
 	SessionExpSec int    `json:"session_exp_sec"`
-	ServicePort   string `json:service_port`
+	ServicePort   string `json:"service_port"`
 }
 
 func getEnvOrString(key string, defaultValue string) string {
@@ -49,22 +45,27 @@ func getEnvOrInt(key string, defaultValue int) int {
 		return defaultValue
 	}
 }
-
 func NewConfig() *Config {
-	return &Config{RedisHost: getEnvOrString("REDIS_HOSTNAME", "localhost"),
-		RedisPort:     getEnvOrString("REDIS_PORT", "6379"),
-		RedisPassword: getEnvOrString("REDIS_PASSWORD", ""),
-		RedisDb:       getEnvOrInt("REDIS_DB", 0),
+	return &Config{
 		SessionExpSec: getEnvOrInt("SESSION_EXP_SEC", session.DefaultSessionExpirationSec),
 		ServicePort:   getEnvOrString("SERVICE_PORT", "8090"),
 	}
 }
-
+func NewRedisConfig() *db.RedisConfig {
+	return &db.RedisConfig{RedisHost: getEnvOrString("REDIS_HOSTNAME", "localhost"),
+		RedisPort:     getEnvOrString("REDIS_PORT", "6379"),
+		RedisPassword: getEnvOrString("REDIS_PASSWORD", ""),
+		RedisDb:       getEnvOrInt("REDIS_DB", 0),
+	}
+}
 func main() {
 
 	config := NewConfig()
+	redisConfig := NewRedisConfig()
 
-	server, err := session.NewServer(client, config.SessionExpSec)
+	redisClient := db.NewRedisClient(redisConfig, db.RandomString)
+
+	server, err := session.NewServer(redisClient, config.SessionExpSec)
 	if err != nil {
 		log.Panicln("Failed to create a Session object. Error: " + err.Error())
 		return

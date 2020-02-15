@@ -4,42 +4,25 @@ import (
 	"bytes"
 	"encoding/json"
 	"github.com/alicebob/miniredis"
-	"github.com/go-redis/redis"
 	"github.com/snikiforov55/back-session/session/db"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 )
 
-var (
-	session = 0
-)
-
 func testRandomString(_ int) (string, error) {
 	return "SESSION_01", nil
 }
-
-func TestRandomString(t *testing.T) {
-	str, err := db.RandomString(37)
-	if err != nil {
-		t.Error(err)
-	}
-	if len(str) < 37 {
-		t.Errorf("Unexpected random string length. Waiting for >= 47 got %d", len(str))
-	}
-}
-
 func setupServer() (*miniredis.Miniredis, *Service, error) {
 	mr, err := miniredis.Run()
 	if err != nil {
 		return nil, nil, err
 	}
-	client := redis.NewClient(&redis.Options{
-		Addr: mr.Addr(),
-	})
+	client := db.NewRedisClient(&db.RedisConfig{
+		RedisHost: mr.Host(),
+		RedisPort: mr.Port(),
+	}, testRandomString)
 	srv, _ := NewServer(client, DefaultSessionExpirationSec)
-	srv.randomString = testRandomString
-
 	return mr, srv, nil
 }
 func TestCreateSession(t *testing.T) {
@@ -82,7 +65,7 @@ func TestCreateSession(t *testing.T) {
 			"Waiting for \"SESSION_01\" got \"%s\"", session.SessionId)
 	}
 	var userInfo SessionAttributes
-	err = srv.readSession(session.SessionId, &userInfo)
+	err = srv.db.ReadSession(session.SessionId, &userInfo)
 	if err != nil {
 		t.Errorf("Failed to read back from database. Error: " + err.Error())
 	}
@@ -91,7 +74,6 @@ func TestCreateSession(t *testing.T) {
 	}
 	mr.Close()
 }
-
 func TestCreateSessionNoUser(t *testing.T) {
 	srv, _ := NewServer(nil, DefaultSessionExpirationSec)
 	user := struct {
@@ -141,7 +123,7 @@ func TestGetSessionAttributes(t *testing.T) {
 		"",
 		"",
 	}
-	id, errId := srv.createSession(user.UserId, user, 10)
+	id, errId := srv.db.CreateSession(user.UserId, user, 10)
 	if errId != nil {
 		t.Errorf("%s", errId.Error())
 	}
@@ -177,18 +159,18 @@ func TestReadSessionFailures(t *testing.T) {
 		"",
 		"",
 	}
-	id, errId := srv.createSession(user.UserId, user, 3600)
+	id, errId := srv.db.CreateSession(user.UserId, user, 3600)
 	if errId != nil {
 		t.Errorf("%s", errId.Error())
 	}
-	err := srv.readSession("id", &user)
+	err := srv.db.ReadSession("id", &user)
 	if err == nil {
 		t.Errorf("Expecting readSession to fail due to invalid session id but it didn't.")
 	}
 	dummy := struct {
 		Whatever string `json:"whatever"`
 	}{""}
-	err = srv.readSession(id, &dummy)
+	err = srv.db.ReadSession(id, &dummy)
 	if err == nil {
 		t.Errorf("Expecting readSession to fail due to invalid structure but it didn't.")
 	}
@@ -196,7 +178,7 @@ func TestReadSessionFailures(t *testing.T) {
 		Whatever string `json:"whatever"`
 		UserId   string `json:"user_id"`
 	}{"", ""}
-	err = srv.readSession(id, &dummyOneValid)
+	err = srv.db.ReadSession(id, &dummyOneValid)
 	if err != nil {
 		t.Errorf("Expecting readSession not to fail but it did.")
 	}
@@ -215,7 +197,7 @@ func TestGetSessionAttributesFailures(t *testing.T) {
 		"",
 		"",
 	}
-	_, errId := srv.createSession(user.UserId, user, 10)
+	_, errId := srv.db.CreateSession(user.UserId, user, 10)
 	if errId != nil {
 		t.Errorf("%s", errId.Error())
 	}
@@ -240,7 +222,7 @@ func TestSessionIncompleteUserInfo(t *testing.T) {
 	}{
 		"userOne",
 	}
-	id, errId := srv.createSession(user.UserId, user, 10)
+	id, errId := srv.db.CreateSession(user.UserId, user, 10)
 	if errId != nil {
 		t.Errorf("%s", errId.Error())
 	}
@@ -263,38 +245,6 @@ func TestSessionIncompleteUserInfo(t *testing.T) {
 	}
 	mr.Close()
 }
-func TestDropSessionDatabaseOnly(t *testing.T) {
-	mr, srv, errSrv := setupServer()
-	if errSrv != nil {
-		t.Error(errSrv)
-	}
-	user := struct {
-		UserId string `json:"user_id"`
-	}{
-		"userOne",
-	}
-	id, errId := srv.createSession(user.UserId, user, 10)
-	if errId != nil {
-		t.Errorf("%s", errId.Error())
-	}
-	err := srv.readSession(id, &user)
-	if err != nil {
-		t.Error(err)
-	}
-	err = srv.deleteSession("id")
-	if err == nil {
-		t.Errorf("Expected an error whe deleteing non existing key but got no error")
-	}
-	err = srv.deleteSession(id)
-	if err != nil {
-		t.Error(err)
-	}
-	err = srv.readSession(id, &user)
-	if err == nil {
-		t.Errorf("Expected to fail retrieving session attributes but session was retrieved.")
-	}
-	mr.Close()
-}
 
 func TestDropSession(t *testing.T) {
 	mr, srv, errSrv := setupServer()
@@ -306,7 +256,7 @@ func TestDropSession(t *testing.T) {
 	}{
 		"userOne",
 	}
-	id, errId := srv.createSession(user.UserId, user, 10)
+	id, errId := srv.db.CreateSession(user.UserId, user, 10)
 	if errId != nil {
 		t.Errorf("%s", errId.Error())
 	}
@@ -331,43 +281,6 @@ func TestDropSession(t *testing.T) {
 	mr.Close()
 }
 
-func TestUpdateSessionDB(t *testing.T) {
-	mr, srv, errSrv := setupServer()
-	if errSrv != nil {
-		t.Error(errSrv)
-	}
-	sessionInit := struct {
-		UserId string `json:"user_id"`
-	}{
-		"userOne",
-	}
-	id, errId := srv.createSession(sessionInit.UserId, sessionInit, 10)
-	if errId != nil {
-		t.Errorf("%s", errId.Error())
-	}
-	sessionUpd := struct {
-		UserId      string `json:"user_id"`
-		AccessToken string `json:"access_token"`
-	}{
-		"userOne",
-		"ABC",
-	}
-	sessionRes := sessionUpd
-	sessionRes.AccessToken = ""
-	sessionRes.UserId = ""
-	err := srv.updateSession(id, sessionUpd, &sessionRes)
-	if err != nil {
-		t.Errorf("Update session failed %s", err.Error())
-	}
-	if sessionRes.UserId != sessionUpd.UserId || sessionRes.AccessToken != sessionUpd.AccessToken {
-		t.Errorf("Returned session does not match the update %s != %s", sessionUpd, sessionRes)
-	}
-	if err := srv.updateSession("SessionId", sessionUpd, &sessionRes); err == nil {
-		t.Error("Expecting a call fail due to invalid session ID but it didn't")
-	}
-	mr.Close()
-}
-
 func TestUpdateSession(t *testing.T) {
 	mr, srv, errSrv := setupServer()
 	if errSrv != nil {
@@ -381,7 +294,7 @@ func TestUpdateSession(t *testing.T) {
 		"",
 		"userCreate@email.provider",
 	}
-	id, errId := srv.createSession(userCreate.UserId, userCreate, 10)
+	id, errId := srv.db.CreateSession(userCreate.UserId, userCreate, 10)
 	if errId != nil {
 		t.Errorf("%s", errId.Error())
 	}
@@ -440,7 +353,7 @@ func TestUpdateSessionFailed(t *testing.T) {
 		"",
 		"userCreate@email.provider",
 	}
-	id, errId := srv.createSession(userCreate.UserId, userCreate, 10)
+	id, errId := srv.db.CreateSession(userCreate.UserId, userCreate, 10)
 	if errId != nil {
 		t.Errorf("%s", errId.Error())
 	}
@@ -494,12 +407,12 @@ func TestUpdateSessionFailed(t *testing.T) {
 	userUpdate.Session.UserId = "unknown_user"
 	requestWithError(userUpdate, "non-existing user id")
 
-	userUpdateNoBody := struct {
-		SessionId string            `json:session_id`
-		Session   map[string]string `json:session_attributes`
+	var userUpdateNoBody = struct {
+		SessionId string            `json:"session_id"`
+		Session   map[string]string `json:"session_attributes"`
 	}{
-		id,
-		map[string]string{"": ""},
+		SessionId: id,
+		Session:   map[string]string{"": ""},
 	}
 	requestWithError(userUpdateNoBody, "empty request body")
 
