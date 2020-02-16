@@ -58,6 +58,16 @@ type Database interface {
 	//	The attributes which do not exist are replaced by the empty string.
 	ReadSession(sessionId string, dest interface{}) error
 
+	// Read all sessions belonging to the user.
+	// Fills destination map with requested session attributes, where a map
+	// key is a session id, and value is a map of attribute_key:attribute_value.
+	// Attribute Key and Attribute Value are strings.
+	// For example:
+	// {"session 1" : {"device_id": "a device one"},
+	//  "session 2" : {"device_id": "another device"},
+	// }
+	ReadUserSessions(userId string, attributes []string) (map[string]map[string]string, error)
+
 	// Deletes session key and related session attributes.
 	DeleteSession(sessionId string) error
 

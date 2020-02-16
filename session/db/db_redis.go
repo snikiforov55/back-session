@@ -98,6 +98,33 @@ func (s *Redis) ReadSession(sessionId string, dest interface{}) error {
 	return ObjectFromMap(m, dest)
 }
 
+func (s *Redis) ReadUserSessions(userId string, attributes []string) (map[string]map[string]string, error) {
+	userSessions, err := s.db.LRange(MakeUserKey(userId), 0, -1).Result()
+	if err != nil {
+		return nil, err
+	}
+	getAttributes := func(sessionId string, attribs []string) (map[string]string, error) {
+		output := map[string]string{}
+		for _, reqAttrib := range attribs {
+			attr, err := s.db.HGet(sessionId, reqAttrib).Result()
+			if err != nil {
+				return nil, err
+			}
+			output[reqAttrib] = attr
+		}
+		return output, nil
+	}
+	userSessionsContent := map[string]map[string]string{}
+	for _, session := range userSessions {
+		attributes, err := getAttributes(MakeSessionKey(session), attributes)
+		if err != nil {
+			return nil, err
+		}
+		userSessionsContent[session] = attributes
+	}
+	return userSessionsContent, nil
+}
+
 // Deletes session key and related session attributes.
 func (s *Redis) DeleteSession(sessionId string) error {
 	session := MakeSessionKey(sessionId)
@@ -122,7 +149,7 @@ func (s *Redis) UpdateSession(sessionId string, src interface{}, dest interface{
 		return err
 	}
 	if res == 0 {
-		return errors.New(fmt.Sprintf("Session \"%s\"Not found", sessionId))
+		return errors.New(fmt.Sprintf("SessionId \"%s\"Not found", sessionId))
 	}
 	m := ObjectToMap(src)
 	// If user_id is provided in the payload check if it matches the provided user id.
@@ -130,7 +157,7 @@ func (s *Redis) UpdateSession(sessionId string, src interface{}, dest interface{
 	if uid, ok := m[UserIdVarName]; ok {
 		uidDb, err := s.db.HGet(sessionKey, UserIdVarName).Result()
 		if err != nil {
-			return errors.New(fmt.Sprintf("Session \"%s\" does not have a user id.", sessionId))
+			return errors.New(fmt.Sprintf("SessionId \"%s\" does not have a user id.", sessionId))
 		}
 		if uidDb != uid {
 			return errors.New(fmt.Sprintf("User id \"%s\" stored in the session \"%s\" does not "+
