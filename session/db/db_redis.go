@@ -45,29 +45,28 @@ func (s *Redis) CreateSession(userId string, sessionAttribs interface{}, expirat
 	sessionId := MakeSessionKey(rndStr)
 	//TODO replace iteration through a map after a miniredis fix will be available
 	for k, v := range uInfoMap {
-		err := s.db.HSet(sessionId, k, v).Err()
+		err := pipe.HSet(sessionId, k, v).Err()
 		if err != nil {
 			_ = pipe.Discard()
 			return "", err
 		}
 	}
 	now := time.Now().UTC().String()
-	if err := s.db.HSet(sessionId, CreateDateAttr, now).Err(); err != nil {
+	if err := pipe.HSet(sessionId, CreateDateAttr, now).Err(); err != nil {
 		_ = pipe.Discard()
 		return "", err
 	}
-	if err := s.db.HSet(sessionId, UpdateDateAttr, now).Err(); err != nil {
+	if err := pipe.HSet(sessionId, UpdateDateAttr, now).Err(); err != nil {
 		_ = pipe.Discard()
 		return "", err
 	}
 	if expirationSec >= 0 {
-		err := s.db.Expire(sessionId, time.Duration(expirationSec)*time.Second).Err()
-		if err != nil {
+		if err := pipe.Expire(sessionId, time.Duration(expirationSec)*time.Second).Err(); err != nil {
 			_ = pipe.Discard()
 			return "", nil
 		}
 	}
-	if err := s.db.RPush(MakeUserKey(userId), rndStr).Err(); err != nil {
+	if err := pipe.RPush(MakeUserKey(userId), rndStr).Err(); err != nil {
 		_ = pipe.Discard()
 		return "", err
 	}
@@ -202,6 +201,11 @@ func (s *Redis) UpdateSession(sessionId string, src interface{}, dest interface{
 			}
 			return err
 		}
+	}
+	now := time.Now().UTC().String()
+	if err := pipe.HSet(sessionKey, UpdateDateAttr, now).Err(); err != nil {
+		_ = pipe.Discard()
+		return err
 	}
 	if _, err := pipe.Exec(); err != nil {
 		return err
