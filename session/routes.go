@@ -11,7 +11,8 @@ func (s *Service) routes() {
 	s.Router.Methods("DELETE").Name("DropSession").
 		Path(Api() + "/session/{id}").HandlerFunc(s.handleDropSession())
 	s.Router.Methods("GET").Name("GetSessionAttributes").
+		Path(Api() + "/session/user/{user_id}").HandlerFunc(s.handleGetUserSessions())
+	s.Router.Methods("GET").Name("GetSessionAttributes").
 		Path(Api() + "/session/{id}").HandlerFunc(s.handleGetSessionAttributes())
-	//s.Router.Methods("GET").Name("GetSessionAttributes").
-	//	Path(Api() + "/session/user/{user_id}").HandlerFunc(s.handleGetUserSessions())
+
 }

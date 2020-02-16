@@ -418,3 +418,50 @@ func TestUpdateSessionFailed(t *testing.T) {
 
 	mr.Close()
 }
+
+func TestReadUserSessions(t *testing.T) {
+	mr, srv, errSrv := setupServer()
+	if errSrv != nil {
+		t.Error(errSrv)
+	}
+	defer mr.Close()
+	userId := "user_one"
+	createTestSessions := func() error {
+		sessionInit := struct {
+			UserId   string `json:"user_id"`
+			DeviceId string `json:"device_id"`
+		}{
+			UserId: userId,
+		}
+		devices := []string{"computer", "laptop", "phone_1", "phone_2"}
+		type (
+			TestSession struct {
+				SessionId string
+				Device    string
+			}
+		)
+		sessionIds := []TestSession{}
+		for _, d := range devices {
+			sessionInit.DeviceId = d
+			id, err := srv.db.CreateSession(sessionInit.UserId, sessionInit, 10)
+			if err != nil {
+				return err
+			}
+			sessionIds = append(sessionIds, TestSession{id, d})
+		}
+		return nil
+	}
+	if err := createTestSessions(); err != nil {
+		t.Error(err)
+		return
+	}
+	req, err := http.NewRequest("GET", Api()+"/session/user/"+userId, nil)
+	if err != nil {
+		t.Error(err)
+	}
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Errorf("GetSession. Invalid HTTP response. Wait %d got %d ", http.StatusOK, w.Code)
+	}
+}

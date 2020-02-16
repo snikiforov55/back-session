@@ -116,7 +116,15 @@ func (s *Redis) ReadUserSessions(userId string, attributes []string) (map[string
 	}
 	userSessionsContent := map[string]map[string]string{}
 	for _, session := range userSessions {
-		attributes, err := getAttributes(MakeSessionKey(session), attributes)
+		redisSessionId := MakeSessionKey(session)
+		num, err := s.db.Exists(redisSessionId).Result()
+		if err != nil {
+			return nil, err
+		}
+		if num == 0 {
+			continue
+		}
+		attributes, err := getAttributes(redisSessionId, attributes)
 		if err != nil {
 			return nil, err
 		}

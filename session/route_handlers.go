@@ -126,6 +126,33 @@ func (s *Service) handleGetSessionAttributes() http.HandlerFunc {
 	}
 }
 
+func (s *Service) handleGetUserSessions() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		userId := vars["user_id"]
+		sessions, err := s.db.ReadUserSessions(userId, []string{"device_id"})
+		if err != nil {
+			reportError(w, http.StatusNotFound,
+				"Failed to retrieve sessions for user"+userId+" from database. Error: "+err.Error())
+			return
+		}
+		if js, err := json.Marshal(sessions); err != nil {
+			reportError(w, http.StatusInternalServerError,
+				"Failed to encode session struct to json buffer. Error: "+err.Error())
+			return
+		} else {
+			header := w.Header()
+			header.Set("Content-Type", "application/json")
+			header.Set("Cache-Control", "no-cache, no-store")
+			if _, err := w.Write(js); err != nil {
+				reportError(w, http.StatusInternalServerError,
+					"Failed write a payload to the response. Error: "+err.Error())
+				return
+			}
+		}
+	}
+}
+
 func (s *Service) handleDropSession() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
