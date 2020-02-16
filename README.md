@@ -50,7 +50,7 @@ The session database is redis.
 
 ## Build executable command
 ```
-CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o sessionsrv.elf .
+CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o sessionsrv.elf64 .
 ```
 
 ## Docker
@@ -68,8 +68,8 @@ docker run -it --publish 8090:8090 --rm --name go-session --link redis go-sessio
 ```
 ## Testing commands
 * Create session
-```curl http://localhost:8090/session -H "Content-Type: application/json" -X POST -d '{"user_id":"user007"}' -v```
+```curl http://localhost:8090/a01/session -H "Content-Type: application/json" -X POST -d '{"user_id":"user007"}' -v```
 * View session
-```curl http://localhost:8090/session/FBC9W2wccBywDCzmXaOG-CxJczzfe5Kyf9KoNgNgN343bf1RO7xQNkT1z44BbMg=  -X GET -v```
+```curl http://localhost:8090/a01/session/FBC9W2wccBywDCzmXaOG-CxJczzfe5Kyf9KoNgNgN343bf1RO7xQNkT1z44BbMg=  -X GET -v```
 * Delete session
-```curl http://localhost:8090/session/FBC9W2wccBywDCzmXaOG-CxJczzfe5Kyf9KoNgNgN343bf1RO7xQNkT1z44BbMg=  -X DELETE -v```
+```curl http://localhost:8090/a01/session/FBC9W2wccBywDCzmXaOG-CxJczzfe5Kyf9KoNgNgN343bf1RO7xQNkT1z44BbMg=  -X DELETE -v```

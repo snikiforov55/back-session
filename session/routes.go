@@ -1,7 +1,7 @@
 package session
 
 func Api() string {
-	return "/api/01"
+	return "/a01"
 }
 func (s *Service) routes() {
 	s.Router.Methods("POST").Name("CreateSession").
@@ -12,4 +12,6 @@ func (s *Service) routes() {
 		Path(Api() + "/session/{id}").HandlerFunc(s.handleDropSession())
 	s.Router.Methods("GET").Name("GetSessionAttributes").
 		Path(Api() + "/session/{id}").HandlerFunc(s.handleGetSessionAttributes())
+	//s.Router.Methods("GET").Name("GetSessionAttributes").
+	//	Path(Api() + "/session/user/{user_id}").HandlerFunc(s.handleGetUserSessions())
 }
