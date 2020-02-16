@@ -3,6 +3,7 @@ package session
 import (
 	"encoding/json"
 	"github.com/gorilla/mux"
+	"github.com/snikiforov55/back-session/session/db"
 	"log"
 	"net/http"
 )
@@ -130,7 +131,7 @@ func (s *Service) handleGetUserSessions() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
 		userId := vars["user_id"]
-		sessions, err := s.db.ReadUserSessions(userId, []string{"device_id"})
+		sessions, err := s.db.ReadUserSessions(userId, []string{"device_id", db.CreateDateAttr, db.UpdateDateAttr})
 		if err != nil {
 			reportError(w, http.StatusNotFound,
 				"Failed to retrieve sessions for user"+userId+" from database. Error: "+err.Error())

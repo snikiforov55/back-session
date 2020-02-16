@@ -41,21 +41,37 @@ func (s *Redis) CreateSession(userId string, sessionAttribs interface{}, expirat
 	if errRnd != nil {
 		return "", errRnd
 	}
+	pipe := s.db.TxPipeline()
 	sessionId := MakeSessionKey(rndStr)
 	//TODO replace iteration through a map after a miniredis fix will be available
 	for k, v := range uInfoMap {
 		err := s.db.HSet(sessionId, k, v).Err()
 		if err != nil {
+			_ = pipe.Discard()
 			return "", err
 		}
+	}
+	now := time.Now().UTC().String()
+	if err := s.db.HSet(sessionId, CreateDateAttr, now).Err(); err != nil {
+		_ = pipe.Discard()
+		return "", err
+	}
+	if err := s.db.HSet(sessionId, UpdateDateAttr, now).Err(); err != nil {
+		_ = pipe.Discard()
+		return "", err
 	}
 	if expirationSec >= 0 {
 		err := s.db.Expire(sessionId, time.Duration(expirationSec)*time.Second).Err()
 		if err != nil {
+			_ = pipe.Discard()
 			return "", nil
 		}
 	}
 	if err := s.db.RPush(MakeUserKey(userId), rndStr).Err(); err != nil {
+		_ = pipe.Discard()
+		return "", err
+	}
+	if _, err := pipe.Exec(); err != nil {
 		return "", err
 	}
 	return rndStr, nil
@@ -73,6 +89,7 @@ func (s *Redis) ReadSession(sessionId string, dest interface{}) error {
 	values := make([]interface{}, len(m))
 	var i = 0
 	//TODO convert to HMGET
+
 	for k, _ := range m {
 		keys[i] = k
 		value, err := s.db.HGet(MakeSessionKey(sessionId), k).Result()
@@ -108,7 +125,7 @@ func (s *Redis) ReadUserSessions(userId string, attributes []string) (map[string
 		for _, reqAttrib := range attribs {
 			attr, err := s.db.HGet(sessionId, reqAttrib).Result()
 			if err != nil {
-				return nil, err
+				continue
 			}
 			output[reqAttrib] = attr
 		}
@@ -138,7 +155,7 @@ func (s *Redis) DeleteSession(sessionId string) error {
 	session := MakeSessionKey(sessionId)
 	// Retrieve a user name associated with the session.
 	// Remove a session id from the users's list of sessions.
-	if user, err := s.db.HGet(session, UserIdVarName).Result(); err != nil {
+	if user, err := s.db.HGet(session, UserIdAttr).Result(); err != nil {
 		return err
 	} else {
 		s.db.LRem(MakeUserKey(user), 0, sessionId)
@@ -162,8 +179,8 @@ func (s *Redis) UpdateSession(sessionId string, src interface{}, dest interface{
 	m := ObjectToMap(src)
 	// If user_id is provided in the payload check if it matches the provided user id.
 	// If user id does not match the database return error.
-	if uid, ok := m[UserIdVarName]; ok {
-		uidDb, err := s.db.HGet(sessionKey, UserIdVarName).Result()
+	if uid, ok := m[UserIdAttr]; ok {
+		uidDb, err := s.db.HGet(sessionKey, UserIdAttr).Result()
 		if err != nil {
 			return errors.New(fmt.Sprintf("SessionId \"%s\" does not have a user id.", sessionId))
 		}
@@ -176,7 +193,7 @@ func (s *Redis) UpdateSession(sessionId string, src interface{}, dest interface{
 	pipe := s.db.TxPipeline()
 	for k, v := range m {
 		// Do not set user id
-		if k == UserIdVarName {
+		if k == UserIdAttr {
 			continue
 		}
 		if err := pipe.HSet(sessionKey, k, v).Err(); err != nil {

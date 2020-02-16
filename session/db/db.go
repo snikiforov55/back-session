@@ -6,7 +6,9 @@ import (
 	"encoding/json"
 )
 
-const UserIdVarName = "user_id"
+const UserIdAttr = "user_id"
+const CreateDateAttr = "create_date"
+const UpdateDateAttr = "update_date"
 
 //const SessionIdName = "session_id"
 //const SessionAttrName = "session_attributes"
@@ -48,6 +50,10 @@ type Database interface {
 	// Creates a session for the provided user id.
 	// If user id is not provided the function fails and no records in the database are created.
 	// Returns a session id string on success.
+	// By default the timestamp with a creation date is added to the session.
+	// The session attributes contain default attributes:
+	// { user_id, create_time, update_time }
+	//
 	CreateSession(userId string, sessionAttribs interface{}, expirationSec int) (string, error)
 
 	// Returns session attributes for the provided sessionId
@@ -66,6 +72,7 @@ type Database interface {
 	// {"session 1" : {"device_id": "a device one"},
 	//  "session 2" : {"device_id": "another device"},
 	// }
+	// If non-existing attribute is requested, the attribute is ignored.
 	ReadUserSessions(userId string, attributes []string) (map[string]map[string]string, error)
 
 	// Deletes session key and related session attributes.
